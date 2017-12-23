@@ -95,7 +95,7 @@ ui <- dashboardPage(
   ),
   tabItem(tabName = "updater",
           h2("Update Primer Box"),
-          fluidRow(
+          fluidPage(fluidRow(
             box(width = 6,
             h3("Step One: Load the Scan File"),
             fileInput("updaterinput", "Scanned CSV",
@@ -124,14 +124,15 @@ ui <- dashboardPage(
           ),
           box(width = 12,
               h3("Step Three: Check that the merge is correct"),
-              dataTableOutput("mergedb")
+              DT::dataTableOutput("mergedb")
           ),
           box(width = 12,
-              h3("Step Four: Updated DB / Save")
+              h3("Step Four: Updated DB / Save"),
+              DT::dataTableOutput("merged_final")
           )
           
           
-  )
+  ))
   
       )))
 
@@ -148,7 +149,7 @@ server <- function(input, output) {
   update_list <- reactive({
     update.df<-read.csv(file = input$updaterinput$datapath,quote = "",header = input$csvheader,as.is=F,stringsAsFactors = F)
     colnames(update.df) <- c("Manufacturing.ID","Code","Scanned")
-    update.df$Manufacturing.ID <- as.numeric(as.character(update.df$Manufacturing.ID)) 
+    update.df$Manufacturing.ID <- as.character(update.df$Manufacturing.ID) 
     update.df %>% select(-Code) %>% arrange(Scanned) -> update.df
     update.df
   })
@@ -167,16 +168,33 @@ server <- function(input, output) {
   })
   
   mergedb.action <- reactive({
-    mergedb.df<- merge(x = primer_db(),y = add_locations(),by = "Location",all.x = T,suffixes = c(".old",".new"))
+    primer.db.merging <- primer_db()
+    primer.db.merging$Manufacturing.ID <- as.character(primer.db.merging$Manufacturing.ID)
+    primer.db.merging$Scanned <- as.character(primer.db.merging$Scanned)
+    newscans.df <- add_locations()
+    newscans.df$Scanned <- as.character(newscans.df$Scanned)
+    mergedb.df<- merge(x = primer.db.merging,y = newscans.df,by = "Location",all.x = T,suffixes = c(".old",".new"))
     mergedb.df<-mergedb.df %>% 
-      mutate(Manufacturing.ID.merged = ifelse(is.na(Manufacturing.ID.new), Manufacturing.ID.old,Manufacturing.ID.new))
+      mutate(Manufacturing.ID.merged = ifelse(is.na(Manufacturing.ID.new), Manufacturing.ID.old,Manufacturing.ID.new),
+             Scanned.merged = ifelse(is.na(Scanned.new), Scanned.old,Scanned.new))
   })
   
-  output$mergedb <- renderDataTable({
-    
-    mergedb.action() %>% select(Location,Manufacturing.ID.old,Manufacturing.ID.new,Manufacturing.ID.merged)
+  output$mergedb <- DT::renderDataTable({
+    #mergedb.action()
+    mergedb.action() %>% select(Location,Manufacturing.ID.old,Scanned.old,Manufacturing.ID.new,Scanned.new,Manufacturing.ID.merged,Scanned.merged)
     
     })
+  
+  output$merged_final <- DT::renderDataTable({
+    master.df <- master_db()
+    master.df$Manufacturing.ID<-as.character(master.df$Manufacturing.ID)
+    mergedb.action() %>% select(Location,Manufacturing.ID.merged,Scanned.merged) -> base_merge.df
+    mergeids <- c("Location","Manufacturing.ID","Scanned")
+    colnames(base_merge.df) <- mergeids
+    final.merge <- merge(x=base_merge.df,y=master.df,by = "Manufacturing.ID",all.x = T)
+    final.merge
+    
+  })
   
   boxlocs <- reactive({
     if(nrow(update_list()) %% 9 == 0){
@@ -241,14 +259,6 @@ server <- function(input, output) {
       buttons = c('copy', 'csv', 'excel', 'pdf', 'print'))
     
     )
-  
-  output$primerdl <- downloadHandler(filename = function(){
-    paste("selected_primers",Sys.Date(),".csv",sep = "")
-    },
-                                      content = function(file) {
-    s = input$primertable_rows_all
-    write.csv(primer_db()[s, , drop = FALSE], file,quote = F,row.names = F,col.names = T)
-  },contentType = "text/csv")
   
   output$reorderdl <- downloadHandler(filename = function(){
     paste("IDT_reorder_form_",Sys.Date(),".csv",sep = "")
