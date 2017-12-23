@@ -187,8 +187,8 @@ server <- function(input, output) {
   })
   
   mergedb.action <- reactive({
-    mergedb.df<- primer_db() %>%
-      mutate(new_mfg = add_locations()$Manufacturing.id[add_locations()$Location == Location])
+    mergedb.df<- merge(x = primer_db(),y = add_locations(),by = "Location",all.x = T)
+      
     mergedb.df
   })
   
