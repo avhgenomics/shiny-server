@@ -9,6 +9,9 @@
 
 library(shiny)
 library(shinydashboard)
+
+library(tidyverse)
+library(DT)
 # Define UI for application that draws a histogram
 
 ui <- dashboardPage(
@@ -138,8 +141,7 @@ ui <- dashboardPage(
               dataTableOutput("mergedb")
           ),
           box(width = 12,
-              h3("Step Four: Updated DB / Save"),
-              dataTableOutput("mergedb")
+              h3("Step Four: Updated DB / Save")
           )
           
           
@@ -148,11 +150,7 @@ ui <- dashboardPage(
       )))
 
 server <- function(input, output) {
-  library(tidyverse)
-  library(DT)
   
-
-
   primer_db <- reactive({
     primer.table <- read.csv(file = input$dbinput$datapath,header = T,quote = "",as.is = F,stringsAsFactors = F)
     primer.table
