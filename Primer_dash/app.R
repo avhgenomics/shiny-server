@@ -116,27 +116,37 @@ ui <- dashboardPage(
   ),
   tabItem(tabName = "updater",
           h2("Update Primer Box"),
-          box(width = NULL,
-            h3("Step One: Upload scanned csv file"),
-            fileInput("updaterinput", "Choose CSV File",
+          box(width = 12,
+            h3("Step One: Load the Scan and Master tables"),
+            fileInput("updaterinput", "Upload Scanned CSV",
                       multiple = F,
                       accept = c("text/csv",
                                  "text/comma-separated-values,text/plain",
                                  ".csv")),
             checkboxInput("csvheader","Header?",F),
+            fileInput("masterinput", "Upload Master Table",
+                      multiple = F,
+                      accept = c("text/csv",
+                                 "text/comma-separated-values,text/plain",
+                                 ".csv")),
             dataTableOutput("updateroutput")
           ),
-          box(width = NULL,
+          box(width = 12,
             h3("Step Two: Select the box to update"),
             textInput("rack_in","Rack",value = "I"),
             textInput("col_in","Column",value = "1"),
             textInput("box_in","Box",value = "A"),
             dataTableOutput("updaterlocs")
           ),
-          box(width = NULL,
-              h3("Step Three: Save Merged Database CSV"),
+          box(width = 12,
+              h3("Step Three: Check that the merge is correct"),
+              dataTableOutput("mergedb")
+          ),
+          box(width = 12,
+              h3("Step Four: Updated DB / Save"),
               dataTableOutput("mergedb")
           )
+          
           
   )
   
@@ -146,29 +156,23 @@ server <- function(input, output) {
   library(tidyverse)
   library(DT)
   
-  primer.Update <- function(current_db,scanned_box,total_db){
-    backup_db.name <- paste(Sys.Date(),current_db,"backup.csv",sep = '')
-    write.csv(paste0("Primer_dash/backups/",backup_db.name),x = current_db,quote = F,row.names = F,col.names = T)
-    current_db %>%
-      transform(Manufacturing.ID = scanned_box$Manufacturing.ID[scanned_box$Location == current_db$Location],
-                code = scanned_box$code[scanned_box$Location == current_db$Location],
-                scanned = scanned_box$scanned[scanned_box$Location == current_db$Location]
-      ) -> current_db
-    updated_db<-merge(x = current_db,y = total_db,by.x = "Manufacturing.ID",all.x = T)
-    write.csv(updated_db,file = "Primer_dash/csv/updated_db.csv",quote = F,row.names = F,col.names = T)
-  }
-  
-  updatecsv <- reactive({read.csv(file = input$updaterinput$datapath,quote = "",header = input$csvheader)})
-  
 
-  
+
   primer_db <- reactive({
-    primer.table <- read.csv(file = input$dbinput$datapath,header = T,quote = "",as.is = F)
+    primer.table <- read.csv(file = input$dbinput$datapath,header = T,quote = "",as.is = F,stringsAsFactors = F)
+    primer.table$Manufacturing.ID <- as.numeric(as.character(primer.table$Manufacturing.ID))
+    primer.table
      })
+  master_table <- reactive({
+    master.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",as.is = F,stringsAsFactors = F)
+    master.table$Manufacturing.ID <- as.numeric(as.character(master.table$Manufacturing.ID))
+    master.table
+  })
   
   update_list <- reactive({
-    update.df<-read.csv(file = input$updaterinput$datapath,quote = "",header = input$csvheader,as.is=F)
+    update.df<-read.csv(file = input$updaterinput$datapath,quote = "",header = input$csvheader,as.is=F,stringsAsFactors = F)
     colnames(update.df) <- c("Manufacturing.ID","Code","Scanned")
+    update.df$Manufacturing.ID <- as.numeric(as.character(update.df$Manufacturing.ID)) 
     update.df %>% select(-Code) %>% arrange(Scanned) -> update.df
     update.df
   })
@@ -187,13 +191,25 @@ server <- function(input, output) {
   })
   
   mergedb.action <- reactive({
-    mergedb.df<- merge(x = primer_db(),y = add_locations(),by = "Location",all.x = T)
+    mergedb.df<- merge(x = primer_db(),y = add_locations(),by = "Location",all.x = T,suffixes = c(".old",".new"))
+    mergedb.df<-mergedb.df %>% 
+      mutate(Manufacturing.ID.merged = ifelse(is.na(Manufacturing.ID.new), Manufacturing.ID.old,Manufacturing.ID.new))
       
     mergedb.df
   })
   
   output$mergedb <- renderDataTable({
+    
+    #mergedb.action() %>% select(Location,Manufacturing.ID.old,Manufacturing.ID.new,Manufacturing.ID.merged)
     mergedb.action()
+    
+    })
+  
+  output$mergemaster <- renderDataTable({
+    columnid <- colnames(primer_db())
+    
+    merged.db <- mergedb.action() %>%
+      select(-Manufacturing.ID.old,-Manufacturing.ID.new)
   })
   
   boxlocs <- reactive({
