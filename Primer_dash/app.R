@@ -63,30 +63,54 @@ ui <- dashboardPage(
   tabItem(tabName = "primertable",
           h2("Locate Primers"),
           DT::dataTableOutput("primertable"),
-          fluidRow(box(title = "Download Selected Primers",
-                       "Download a csv file of your primers for printing, etc",tags$br(),
-          downloadButton("primerdl","Download Selected Primers")),
+          fluidRow(
           box(title = "Create IDT Reorder form for selected primers",
-              "Settings set to standard options; 25 nM, standard desalting",tags$br(),
+              h3("Set bulk options:"),tags$br(),
+              fluidPage(
+                selectInput("idt_scale",label = "Set Scale",choices = list("25 nmole" = "25nm",
+                                                                           "100 nmole" = "100nm",
+                                                                           "250 nmole" = "250nm",
+                                                                           "1 µmole" = "1um",
+                                                                           "5 µmole" = "5um",
+                                                                           "10 µmole" = "10um",
+                                                                           "4 nmole Ultramer" = "4nmU",
+                                                                           "20 nmole Ultramer" = "20nmU",
+                                                                           "PAGE Ultramer" = "PU",
+                                                                           "25 nmole Sameday" = "25nmS"
+                                                                           ),multiple = F,selected = "25nm"),
+                selectInput("idt_purification", label = "Set Purification",choices = list("Standard Desalting" = "STD",
+                                                                                          "PAGE (+$50)" = "PAGE",
+                                                                                          "HPLC (+$42)" = "HPLC",
+                                                                                          "IE HPLC (+$45)" = "IEHPLC",
+                                                                                          "RNase Free HPLC (+$75)" = "RNASE",
+                                                                                          "Dual HPLC (+$80)" = "DUALHPLC",
+                                                                                          "Dual PAGE & HPLC (+$130)" = "PAGEHPLC"),selected = "STD",multiple = F)
+              ),
               downloadButton("reorderdl","Download bulk input for selected primers")))
           ),
   tabItem(tabName = "tutorial",
-          h2("How to help"),
+          h2("Getting Started Guides"),
           fluidPage(
-          box(width = NULL,
             h3("Resolve Missing Information"),
+            fluidRow(
+          box(width = 10,
+            
             "Older primers may be missing the manufacturing ID (the barcode value essentially).  
             To help with this you can find the information required.",
             h4("Step One: Download the missing information list"),
             "Click the button found below to download a copy of the current primer locations with missing information.",
-            downloadButton("missinginfo","Download Missing Locations"),
-            h4("Step Two: Find the primers"),
+            downloadButton("missinginfo","Download Missing Locations")),
+            fluidRow(
+              box(
+              h4("Step Two: Find the primers"),
             "Using this list, find the primers at the location listed.",
-            "Important: The primer manufacturing number should match the box location in the list, double check this!",
+            "Important: The primer manufacturing number should match the box location in the list, double check this!")),
+          box(
             h4("Step Three: Fill in the Reference ID"),
-            "Write the corresponding reference ID in the missing list.  The reference number is bold and large (see example label)"
-          ),
-          tags$img(src='sample_label.png',height=250,width=300))
+            "Write the corresponding reference ID in the missing list.  The reference number is bold and large (see example label)",
+            tags$img(src='sample_label.png',height=(580/3),width=(1020/3))
+          )
+          ))
           
           
   ),
@@ -236,21 +260,14 @@ server <- function(input, output) {
     
     )
   
-  output$primerdl <- downloadHandler(filename = function(){
-    paste("selected_primers",Sys.Date(),".csv",sep = "")
-    },
-                                      content = function(file) {
-    s = input$primertable_rows_all
-    write.csv(primer_db()[s, , drop = FALSE], file,quote = F,row.names = F,col.names = T)
-  },contentType = "text/csv")
-  
   output$reorderdl <- downloadHandler(filename = function(){
     paste("IDT_reorder_form_",Sys.Date(),".csv",sep = "")
   },
   content = function(file) {
     s = input$primertable_rows_all
     reorder.df <- primer_db()[s, , drop = FALSE] %>% select(Sequence.Name,Sequence) %>%
-      mutate(scale = "25nm",Purification = "STD")
+      mutate(scale = input$idt_scale,
+             Purification = input$idt_purification)
     write.csv(reorder.df, file,quote = F,row.names = F,col.names = F)
   },contentType = "text/csv")
   
