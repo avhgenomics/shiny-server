@@ -124,11 +124,6 @@ ui <- dashboardPage(
                                  "text/comma-separated-values,text/plain",
                                  ".csv")),
             checkboxInput("csvheader","Header?",F),
-            fileInput("masterinput", "Upload Master Table",
-                      multiple = F,
-                      accept = c("text/csv",
-                                 "text/comma-separated-values,text/plain",
-                                 ".csv")),
             dataTableOutput("updateroutput")
           ),
           box(width = 12,
@@ -160,15 +155,9 @@ server <- function(input, output) {
 
   primer_db <- reactive({
     primer.table <- read.csv(file = input$dbinput$datapath,header = T,quote = "",as.is = F,stringsAsFactors = F)
-    primer.table$Manufacturing.ID <- as.numeric(as.character(primer.table$Manufacturing.ID))
     primer.table
      })
-  master_table <- reactive({
-    master.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",as.is = F,stringsAsFactors = F)
-    master.table$Manufacturing.ID <- as.numeric(as.character(master.table$Manufacturing.ID))
-    master.table
-  })
-  
+
   update_list <- reactive({
     update.df<-read.csv(file = input$updaterinput$datapath,quote = "",header = input$csvheader,as.is=F,stringsAsFactors = F)
     colnames(update.df) <- c("Manufacturing.ID","Code","Scanned")
@@ -194,23 +183,13 @@ server <- function(input, output) {
     mergedb.df<- merge(x = primer_db(),y = add_locations(),by = "Location",all.x = T,suffixes = c(".old",".new"))
     mergedb.df<-mergedb.df %>% 
       mutate(Manufacturing.ID.merged = ifelse(is.na(Manufacturing.ID.new), Manufacturing.ID.old,Manufacturing.ID.new))
-      
-    mergedb.df
   })
   
   output$mergedb <- renderDataTable({
     
-    #mergedb.action() %>% select(Location,Manufacturing.ID.old,Manufacturing.ID.new,Manufacturing.ID.merged)
-    mergedb.action()
+    mergedb.action() %>% select(Location,Manufacturing.ID.old,Manufacturing.ID.new,Manufacturing.ID.merged)
     
     })
-  
-  output$mergemaster <- renderDataTable({
-    columnid <- colnames(primer_db())
-    
-    merged.db <- mergedb.action() %>%
-      select(-Manufacturing.ID.old,-Manufacturing.ID.new)
-  })
   
   boxlocs <- reactive({
     if(nrow(update_list()) %% 9 == 0){
