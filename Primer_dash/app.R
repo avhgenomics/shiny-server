@@ -128,7 +128,8 @@ ui <- dashboardPage(
           ),
           box(width = 12,
               h3("Step Four: Updated DB / Save"),
-              DT::dataTableOutput("merged_final")
+              DT::dataTableOutput("merged_final"),
+              downloadButton("saveupdateddb","Download Updated DB")
           )
           
           
@@ -185,16 +186,30 @@ server <- function(input, output) {
     
     })
   
+  merged_final.db <- reactive({
+  master.df <- master_db()
+  master.df$Manufacturing.ID<-as.character(master.df$Manufacturing.ID)
+  mergedb.action() %>% select(Location,Manufacturing.ID.merged,Scanned.merged) -> base_merge.df
+  mergeids <- c("Location","Manufacturing.ID","Scanned")
+  colnames(base_merge.df) <- mergeids
+  final.merge <- merge(x=base_merge.df,y=master.df,by = "Manufacturing.ID",all.x = T)
+  final.merge <- final.merge %>%
+    select(Location,Sequence.Name,Sequence,Length,GC..Content,Tm..50nM.NaCl..C,Order.Date,Sales.Order..,Reference..,Manufacturing.ID,Scanned) %>%
+    arrange(Location)
+  final.merge
+  })
+  
   output$merged_final <- DT::renderDataTable({
-    master.df <- master_db()
-    master.df$Manufacturing.ID<-as.character(master.df$Manufacturing.ID)
-    mergedb.action() %>% select(Location,Manufacturing.ID.merged,Scanned.merged) -> base_merge.df
-    mergeids <- c("Location","Manufacturing.ID","Scanned")
-    colnames(base_merge.df) <- mergeids
-    final.merge <- merge(x=base_merge.df,y=master.df,by = "Manufacturing.ID",all.x = T)
-    final.merge
+    merged_final.db()
     
   })
+  
+  output$saveupdateddb <- downloadHandler(filename = function(){
+    paste("primerDB_",Sys.Date(),".csv",sep = "")
+  },
+  content = function(file) {
+    write.csv(merged_final.db(), file,quote = F,row.names = F,col.names = F)
+  },contentType = "text/csv")
   
   boxlocs <- reactive({
     if(nrow(update_list()) %% 9 == 0){
