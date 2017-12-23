@@ -12,6 +12,7 @@ library(shinydashboard)
 
 library(tidyverse)
 library(DT)
+library(rvest)
 # Define UI for application that draws a histogram
 
 ui <- dashboardPage(
@@ -71,8 +72,25 @@ ui <- dashboardPage(
           downloadButton("primerdl","Download Selected Primers")),
           box(title = "Create IDT Reorder form for selected primers",
               "Settings set to standard options; 25 nM, standard desalting",tags$br(),
-              downloadButton("reorderdl","Download bulk input for selected primers")))
-          ),
+              downloadButton("reorderdl","Download bulk input for selected primers")),
+          box(width = 5,
+              h2("Amplicon Checker"),
+              textInput("fwprimer","Forward Primer",placeholder = "ATGC"),
+              textInput("rvprimer","Reverse Primer",placeholder = "CGTA"),
+              selectInput("amporg","Select Species / Build",choices = list("Mouse, mm10" = "https://genome.ucsc.edu/cgi-bin/hgPcr?org=Mouse&db=mm10",
+                                                                           "Mouse, mm9" = "https://genome.ucsc.edu/cgi-bin/hgPcr?org=Mouse&db=mm9",
+                                                                           "Human, hg38" = "https://genome.ucsc.edu/cgi-bin/hgPcr?org=Human&db=hg38",
+                                                                           "Human, hg19" = "https://genome.ucsc.edu/cgi-bin/hgPcr?org=Human&db=hg19"),multiple = F,selected = "https://genome.ucsc.edu/cgi-bin/hgPcr?org=Mouse&db=mm10"),
+              numericInput("ampprod","Set max product size",value = 4000),
+              numericInput("ampminperf","Min Perfect Match",value = 15),
+              numericInput("ampmingood","Min Good Match",value = 15)
+              
+              ),
+          box(h2("Genomic Amplicons"),
+              htmlOutput("gampcheck")),
+          box(h2("mRNA Amplicons"),
+              htmlOutput("mampcheck"))
+          )),
   tabItem(tabName = "tutorial",
           h2("How to help"),
           fluidPage(
@@ -272,8 +290,37 @@ server <- function(input, output) {
     primer_db(), filter = c('top'),extensions = 'Buttons', options = list(
       dom = 'Bfrtip',
       buttons = c('copy', 'csv', 'excel', 'pdf', 'print'))
+      )
+  
+  output$gampcheck <- renderPrint({
+    primers <- input$primertable_rows_selected
     
-    )
+    genome.link <- paste0(input$amporg,"&wp_target=genome&wp_f=",input$fwprimer,"&wp_r=",input$rvprimer,"&Submit=submit&wp_size=",input$ampprod,"&wp_perfect=",input$ampminperf,"&wp_good=",input$ampmingood,"&boolshad.wp_flipReverse=0")
+    
+    genome <- read_html(genome.link) %>%
+      html_nodes("pre") %>%
+      html_text
+    
+    g.amp<-gsub(pattern = "[>]",x = genome,replacement = "")
+    
+    #g.amp<-gsub(pattern = "[\n]",x = genome,replacement = " ")
+    
+    tags$p(g.amp)
+  })
+  
+  output$mampcheck <- renderPrint({
+    mrna.link <- paste0(input$amporg,"&wp_target=mm10KgSeq9&wp_f=",input$fwprimer,"&wp_r=",input$rvprimer,"&Submit=submit&wp_size=",input$ampprod,"&wp_perfect=",input$ampminperf,"&wp_good=",input$ampmingood,"&boolshad.wp_flipReverse=0")
+    
+    mrna <- read_html(mrna.link) %>%
+      html_nodes("pre") %>%
+      html_text
+    
+    m.amp<-gsub(pattern = ">",x = mrna,replacement = "\n")
+    
+    #m.amp<-gsub(pattern = "[\n]",x = mrna,replacement = "\n")
+    
+    tags$p(m.amp)
+  })
   
   output$reorderdl <- downloadHandler(filename = function(){
     paste("IDT_reorder_form_",Sys.Date(),".csv",sep = "")
