@@ -95,15 +95,25 @@ ui <- dashboardPage(
   ),
   tabItem(tabName = "updater",
           h2("Update Primer Box"),
-          box(width = 12,
-            h3("Step One: Load the Scan and Master tables"),
-            fileInput("updaterinput", "Upload Scanned CSV",
+          fluidRow(
+            box(width = 6,
+            h3("Step One: Load the Scan File"),
+            fileInput("updaterinput", "Scanned CSV",
                       multiple = F,
                       accept = c("text/csv",
                                  "text/comma-separated-values,text/plain",
                                  ".csv")),
             checkboxInput("csvheader","Header?",F),
             dataTableOutput("updateroutput")
+            ),
+            box(width = 6,
+                h3("Step Two: Load the Master File"),
+            fileInput("masterinput", "Master CSV",
+                      multiple = F,
+                      accept = c("text/csv",
+                                 "text/comma-separated-values,text/plain",
+                                 ".csv")),
+            dataTableOutput("masteroutput"))
           ),
           box(width = 12,
             h3("Step Two: Select the box to update"),
@@ -129,9 +139,12 @@ server <- function(input, output) {
   
   primer_db <- reactive({
     primer.table <- read.csv(file = input$dbinput$datapath,header = T,quote = "",as.is = F,stringsAsFactors = F)
-    primer.table
      })
 
+  master_db <- reactive({
+    master.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",as.is = F,stringsAsFactors = F)
+  })
+  
   update_list <- reactive({
     update.df<-read.csv(file = input$updaterinput$datapath,quote = "",header = input$csvheader,as.is=F,stringsAsFactors = F)
     colnames(update.df) <- c("Manufacturing.ID","Code","Scanned")
@@ -271,12 +284,17 @@ server <- function(input, output) {
     valueBox(value = primer_stats()$p.errors.n,subtitle = "Locations missing Ref Number",icon = icon("warning"),color = "red")
   })
 
-  output$updateroutput <- renderDataTable({
+  output$updateroutput <- DT::renderDataTable({
     req(input$updaterinput)
     update_list() 
     })
   
-  output$updaterlocs <- renderDataTable({
+  output$masteroutput <- DT::renderDataTable({
+    req(input$masterinput)
+    master_db()
+  })
+  
+  output$updaterlocs <- DT::renderDataTable({
     req(input$updaterinput)
     add_locations()
   })
