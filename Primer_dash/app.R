@@ -46,10 +46,11 @@ ui <- dashboardPage(
     )),
     
     box(title = "Summary Stats",
-      valueBoxOutput(outputId = "primernumber",width = NULL),
-      valueBoxOutput(outputId = "primergood",width = NULL),
-      valueBoxOutput(outputId = "primerempty",width = NULL),
-      valueBoxOutput(outputId = "primererrors",width = NULL)
+      valueBoxOutput(outputId = "primernumber",width = 8),
+      valueBoxOutput(outputId = "primergood",width = 8),
+      valueBoxOutput(outputId = "primermanual",width = 8),
+      valueBoxOutput(outputId = "primerempty",width = 8),
+      valueBoxOutput(outputId = "primererrors",width = 8)
     ),
     box(
       title = "Contact",
@@ -73,8 +74,7 @@ ui <- dashboardPage(
           box(title = "Create IDT Reorder form for selected primers",
               "Settings set to standard options; 25 nM, standard desalting",tags$br(),
               downloadButton("reorderdl","Download bulk input for selected primers")),
-          box(width = 5,
-              h2("Amplicon Checker"),
+          box(width = 5,collapsible = T,collapsed = T,title = "Amplicon Check Settings",
               textInput("fwprimer","Forward Primer",placeholder = "ATGC"),
               textInput("rvprimer","Reverse Primer",placeholder = "CGTA"),
               selectInput("amporg","Select Species / Build",choices = list("Mouse, mm10" = "https://genome.ucsc.edu/cgi-bin/hgPcr?org=Mouse&db=mm10",
@@ -86,16 +86,16 @@ ui <- dashboardPage(
               numericInput("ampmingood","Min Good Match",value = 15)
               
               ),
-          box(h2("Genomic Amplicons"),
-              htmlOutput("gampcheck")),
-          box(h2("mRNA Amplicons"),
+          box(collapsible = T,collapsed = T,title = "Amplicon Results",
+              h3("Genomic Amplicons"),
+              htmlOutput("gampcheck"),
+              h3("mRNA Amplicons"),
               htmlOutput("mampcheck"))
           )),
   tabItem(tabName = "tutorial",
           h2("How to help"),
           fluidPage(
-          box(width = NULL,
-            h3("Resolve Missing Information"),
+          box(width = NULL,collapsible = T,collapsed = T,title = "Resolve Missing Information",
             "Older primers may be missing the manufacturing ID (the barcode value essentially).  
             To help with this you can find the information required.",
             h4("Step One: Download the missing information list"),
@@ -105,9 +105,10 @@ ui <- dashboardPage(
             "Using this list, find the primers at the location listed.",
             "Important: The primer manufacturing number should match the box location in the list, double check this!",
             h4("Step Three: Fill in the Reference ID"),
-            "Write the corresponding reference ID in the missing list.  The reference number is bold and large (see example label)"
-          ),
-          tags$img(src='sample_label.png',height=250,width=300))
+            "Write the corresponding reference ID in the missing list.  The reference number is bold and large (see example label)",tags$br(),
+            tags$img(src='sample_label.png',height=250,width=300)
+          )
+          )
           
           
   ),
@@ -133,19 +134,19 @@ ui <- dashboardPage(
                                  ".csv")),
             dataTableOutput("masteroutput"))
           ),
-          box(width = 12,
-            h3("Step Two: Select the box to update"),
+          box(width = 6,
+            h3("Step Three: Select the box to update"),
             textInput("rack_in","Rack",value = "I"),
             textInput("col_in","Column",value = "1"),
             textInput("box_in","Box",value = "A"),
             dataTableOutput("updaterlocs")
           ),
           box(width = 12,
-              h3("Step Three: Check that the merge is correct"),
+              h3("Step Four: Check that the merge is correct"),
               DT::dataTableOutput("mergedb")
           ),
           box(width = 12,
-              h3("Step Four: Updated DB / Save"),
+              h3("Step Five: Updated DB / Save"),
               DT::dataTableOutput("merged_final"),
               downloadButton("saveupdateddb","Download Updated DB")
           )
@@ -199,6 +200,8 @@ server <- function(input, output) {
   })
   
   output$mergedb <- DT::renderDataTable({
+    req(input$updaterinput)
+    req(input$masterinput)
     #mergedb.action()
     mergedb.action() %>% select(Location,Manufacturing.ID.old,Scanned.old,Manufacturing.ID.new,Scanned.new,Manufacturing.ID.merged,Scanned.merged)
     
@@ -218,6 +221,9 @@ server <- function(input, output) {
   })
   
   output$merged_final <- DT::renderDataTable({
+    req(input$updaterinput)
+    req(input$masterinput)
+    
     merged_final.db()
     
   })
@@ -265,7 +271,13 @@ server <- function(input, output) {
     primer_db() %>%
       filter(is.na(Manufacturing.ID) == FALSE) %>%
       filter(Manufacturing.ID != "EMPTY") %>%
+      filter(Manufacturing.ID != "MANUAL") %>%
       filter(is.na(Reference..)) -> p.errors
+    primer_db() %>%
+      filter(Manufacturing.ID == "MANUAL") -> p.man
+    
+    p.man.n <- nrow(p.man)
+    
     p.errors.simple <- p.errors %>%
       select(Location,Manufacturing.ID) %>%
       mutate(Write.RefID.Here = "     ")
@@ -283,7 +295,8 @@ server <- function(input, output) {
          primer.n = primer.n,
          p.errors = p.errors,
          p.errors.simple = p.errors.simple,
-         p.empty.n = p.empty.n)
+         p.empty.n = p.empty.n,
+         p.man.n = p.man.n)
   })
   
   output$primertable <- DT::renderDataTable(
@@ -293,6 +306,8 @@ server <- function(input, output) {
       )
   
   output$gampcheck <- renderPrint({
+    req(input$fwprimer)
+    req(input$rvprimer)
     primers <- input$primertable_rows_selected
     
     genome.link <- paste0(input$amporg,"&wp_target=genome&wp_f=",input$fwprimer,"&wp_r=",input$rvprimer,"&Submit=submit&wp_size=",input$ampprod,"&wp_perfect=",input$ampminperf,"&wp_good=",input$ampmingood,"&boolshad.wp_flipReverse=0")
@@ -309,6 +324,8 @@ server <- function(input, output) {
   })
   
   output$mampcheck <- renderPrint({
+    req(input$fwprimer)
+    req(input$rvprimer)
     mrna.link <- paste0(input$amporg,"&wp_target=mm10KgSeq9&wp_f=",input$fwprimer,"&wp_r=",input$rvprimer,"&Submit=submit&wp_size=",input$ampprod,"&wp_perfect=",input$ampminperf,"&wp_good=",input$ampmingood,"&boolshad.wp_flipReverse=0")
     
     mrna <- read_html(mrna.link) %>%
@@ -341,18 +358,27 @@ server <- function(input, output) {
   },contentType = "text/csv")
   
   output$primernumber <- renderValueBox({
-    valueBox(value = primer_stats()$primer.n,subtitle = "Total Primers Served",icon = icon("database"),color = "purple")
+    req(input$dbinput)
+    valueBox(value = primer_stats()$primer.n,subtitle = "Total Locations in DB",icon = icon("database"),color = "purple")
   })
   
   output$primergood <- renderValueBox({
-    valueBox(value = primer_stats()$p.good.n,subtitle = "with complete information",icon = icon("thumbs-up"),color = "green")
+    req(input$dbinput)
+    valueBox(value = primer_stats()$p.good.n,subtitle = "Primers with complete information",icon = icon("thumbs-up"),color = "green")
   })
   
   output$primerempty <- renderValueBox({
-    valueBox(value = primer_stats()$p.empty.n,subtitle = "free primer spaces",icon = icon("thumbs-up"),color = "blue")
+    req(input$dbinput)
+    valueBox(value = primer_stats()$p.empty.n,subtitle = "free spaces",icon = icon("thumbs-up"),color = "blue")
+  })
+  
+  output$primermanual <- renderValueBox({
+    req(input$dbinput)
+    valueBox(value = primer_stats()$p.man.n,subtitle = "Primers labeled 'manual' (likely old)",icon = icon("warning"),color = "red")
   })
   
   output$primererrors <- renderValueBox({
+    req(input$dbinput)
     valueBox(value = primer_stats()$p.errors.n,subtitle = "Locations missing Ref Number",icon = icon("warning"),color = "red")
   })
 
