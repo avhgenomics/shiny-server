@@ -11,6 +11,7 @@ library(shiny)
 library(shinydashboard)
 library(tidyverse)
 library(ggplot2)
+library(enrichR)
 
 
 ui <- dashboardPage(
@@ -37,20 +38,38 @@ ui <- dashboardPage(
       tabItem(tabName = "visualization",
       fluidPage(fluidRow(
         h2("Plots and viz"),
-        box(
-          title = "Volcano Plot",
-          status = "primary",
+        box(title = "Volcano Plot",
+            status = "primary",
+            collapsible = T,
+            fluidRow(box(numericInput(inputId = "vp_pvalthresh",label = "P-value significance threshold",value = 0.05,step = 0.001),
+                     numericInput(inputId = "vp_fcthresh",label = "log2 Foldchange threshold",value = 0.5,step = 0.01))),
           plotOutput("volcanoplot")
           ),
         
         box(
-          title = "Volcano Plot Criteria",
+          title = "Full dataset",
           status = "primary",
-          numericInput(inputId = "vp_pvalthresh",label = "P-value significance threshold",value = 0.05,step = 0.001),
-          numericInput(inputId = "vp_fcthresh",label = "log2 Foldchange threshold",value = 0.5,step = 0.01)
+          collapsible = T,
+          collapsed = T,
+          DT::dataTableOutput("fulltable")
+        ),
+        box(
+          title = "Threshold Filtered Genes",
+          status = "primary",
+          collapsible = T,
+          collapsed = T,
+          DT::dataTableOutput("threshtable")
         )
         
         
+        ),
+        fluidRow(
+          box(
+            title = "Enrichr Results",
+            collapsible = T,
+            collapsed = T,
+            DT::dataTableOutput("enrichrthresh")
+          )
         )))
       
       
@@ -70,14 +89,38 @@ server <- function(input, output) {
    output$volcanoplot <- renderPlot({
      req(rnaseq.df())
      plot.volcano <- ggplot(rnaseq.df(),aes(x = log2FoldChange,y = (-log(padj,10))))
-     
      plot.volcano +
-       geom_point()+
+       geom_point(data=rnaseq.df(),color = "#000000")+
        geom_hline(yintercept = -log(input$vp_pvalthresh,10))+
        geom_vline(xintercept = input$vp_fcthresh)+
-       geom_vline(xintercept = -input$vp_fcthresh)
+       geom_vline(xintercept = -input$vp_fcthresh)+
+       geom_point(data = threshold_genes(),aes(x = threshold_genes()$log2FoldChange,y = (-log(threshold_genes()$padj,10))),color = "#FF0000")
      
    })
+   
+   threshold_genes <- reactive({
+     thresholded_genes.df <- rnaseq.df() %>%
+       filter(!between(log2FoldChange,-input$vp_fcthresh,input$vp_fcthresh) & padj <= input$vp_pvalthresh)
+   })
+   
+   output$threshtable <- DT::renderDataTable(
+     threshold_genes(),filter = 'top'
+   )
+   
+   output$fulltable <- DT::renderDataTable(
+     rnaseq.df(),filter = 'top'
+   )
+   
+   enrichment <- reactive({
+     db <- "Reactome_2016"
+     gene.vector <- threshold_genes$gene.vector
+     enrichthresh.results <- enrichr(gene.vector,db)
+     enrichthresh.results
+   })
+   
+   output$enrichrthresh <- DT::renderDataTable({
+    enrichment()
+    })
 }
 
 # Run the application 
