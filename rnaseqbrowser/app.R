@@ -12,10 +12,11 @@ library(shinydashboard)
 library(tidyverse)
 library(ggplot2)
 library(enrichR)
+library(random)
+library(stringr)
 
 
-
-ui <- dashboardPage(
+ui <- dashboardPage(skin = "red",
   dashboardHeader(title = "RNA-Seq Browser"),
   
   dashboardSidebar(sidebarMenu(
@@ -35,7 +36,8 @@ ui <- dashboardPage(
                             multiple = F,
                             accept = c("text/csv",
                                        "text/comma-separated-values,text/plain",
-                                       ".csv")))),
+                                       ".csv")),
+                  textInput("sessID","Generate a session ID",value = "12345"))),
                 box(title = "File Summary Statistics",
                     status = "warning",
                     valueBoxOutput("summarystats",width = 10))
@@ -63,15 +65,12 @@ ui <- dashboardPage(
           status = "primary",
           collapsible = T,
           collapsed = T,
-          DT::dataTableOutput("threshtable")
+          DT::dataTableOutput("threshtable"),
+          downloadButton("threshtable.file","Download Filtered Genes")
         )
         
         
         ),
-          box(width = 12,
-              title = "Enrichr",
-              collapsible = T,
-              collapsed = T,
               fluidRow(
                 box(width = 8,
                     title = "Enrichr Options",
@@ -82,8 +81,9 @@ ui <- dashboardPage(
                 box(width = 8,
                     title = "Enrichr Results",
                     collapsible = T,
-                    collapsed = T,
-                    DT::dataTableOutput("enrichrthresh")
+                    collapsed = F,
+                    DT::dataTableOutput("enrichrthresh"),
+                    downloadButton("enrichr.file",label = "Download Enrichr Results")
                 ),
           box(width = 4,
               title = "Enrichr Plot",
@@ -91,14 +91,15 @@ ui <- dashboardPage(
               collapsed = F,
               selectizeInput(inputId = "enrichplotx","X axis",choices = "placeholder"),
               selectizeInput(inputId = "enrichploty","y axis",choices = "placeholder"),
-              plotOutput("enrichrplot")),
+              plotOutput("enrichrplot"),
+              verbatimTextOutput("selectedgenesprint")),
           box(width = 6,
               title = "Filtered Volcano",
               collapsible = T,
               collapsed = F,
               plotOutput("filteredvolcano")
               )
-          )
+          
         )))
       
       
@@ -108,7 +109,11 @@ ui <- dashboardPage(
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-   
+  
+  idn <- reactive({
+    input$sessID
+  })
+  
   rnaseq.df <- reactive({
     rnaseq<-read.csv(file = input$dbinput$datapath,header = T,quote = "",as.is = F)
   })
@@ -146,6 +151,13 @@ server <- function(input, output) {
    output$threshtable <- DT::renderDataTable(
      threshold_genes(),filter = 'top',extensions = 'Responsive'
    )
+   output$threshtable.file <- downloadHandler(filename = function(){
+     paste("ID_",idn(),"_filtered_padj_",input$vp_pvalthresh,"_l2fc_",input$vp_fcthresh,"_",Sys.Date(),".csv",sep = "")
+   },
+   content = function(file) {
+     write.csv(threshold_genes(), file,quote = F,row.names = F,col.names = F)
+   },contentType = "text/csv")
+   
    
    output$fulltable <- DT::renderDataTable(
      rnaseq.df(),filter = 'top',extensions = 'Responsive'
@@ -161,17 +173,38 @@ server <- function(input, output) {
    output$enrichrthresh <- DT::renderDataTable(
     enrichment(),extensions = 'Responsive'
     )
+   output$enrichr.file <- downloadHandler(filename = function(){
+     paste("ID_",idn(),"_enrichr_padj_",input$vp_pvalthresh,"_l2fc_",input$vp_fcthresh,"_",Sys.Date(),".csv",sep = "")
+   },
+   content = function(file) {
+     write.csv(enrichment(), file,quote = F,row.names = F,col.names = F)
+   },contentType = "text/csv")
    
    output$filteredvolcano <- renderPlot({
-     
-     selected_path_genes <- tolower(unlist(strsplit(enrichment()$Reactome_2016.Genes[input$enrichrplot_rows_selected],";")))
-     
+     filtered.genes <- threshold_genes() %>%
+       filter(symbol %in% selectedgenes())
     
      plot.fvolc <- ggplot(threshold_genes(),aes(x = log2FoldChange,y = (-log(padj,10))))
      
      plot.fvolc +
-       geom_point()
+       geom_point()+
+       geom_point(data = filtered.genes,aes(x=log2FoldChange,y = (-log(padj,10))),color = "red")
      
+   })
+   
+   selectedgenes <- reactive({
+     genecol <- grep("*.Genes",names(enrichment()),value = T)
+     s = input$enrichrthresh_rows_selected
+     geneset<-enrichment()[s,genecol]
+     geneset <- str_to_title(geneset)
+     geneset.vector <- strsplit(x = geneset,split = ";",fixed = T)
+     geneset.vector.ul <- unlist(geneset.vector)
+     geneset.vector.ul
+     
+   })
+   
+   output$selectedgenesprint <- renderPrint({
+     selectedgenes()
    })
    
 }
