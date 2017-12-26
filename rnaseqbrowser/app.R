@@ -14,13 +14,14 @@ library(ggplot2)
 library(enrichR)
 
 
+
 ui <- dashboardPage(
   dashboardHeader(title = "RNA-Seq Browser"),
   
-  dashboardSidebar(
+  dashboardSidebar(sidebarMenu(
     menuItem("Home",tabName = "home",icon = icon("home")),
     menuItem("Visualization",tabName = "visualization",icon = icon("home"))
-    ),
+    )),
   
   dashboardBody(
     tabItems(
@@ -34,7 +35,11 @@ ui <- dashboardPage(
                             multiple = F,
                             accept = c("text/csv",
                                        "text/comma-separated-values,text/plain",
-                                       ".csv")))))),
+                                       ".csv")))),
+                box(title = "File Summary Statistics",
+                    status = "warning",
+                    valueBoxOutput("summarystats",width = 10))
+                )),
       tabItem(tabName = "visualization",
       fluidPage(fluidRow(
         h2("Plots and viz"),
@@ -63,12 +68,36 @@ ui <- dashboardPage(
         
         
         ),
-        fluidRow(
-          box(
-            title = "Enrichr Results",
-            collapsible = T,
-            collapsed = T,
-            DT::dataTableOutput("enrichrthresh")
+          box(width = 12,
+              title = "Enrichr",
+              collapsible = T,
+              collapsed = T,
+              fluidRow(
+                box(width = 8,
+                    title = "Enrichr Options",
+                    collapsible = T,
+                    collapsed = F,
+                    selectizeInput(inputId = "enrichrdbs",label = "Select Databases",choices = listEnrichrDbs(),multiple = F)
+                  ),
+                box(width = 8,
+                    title = "Enrichr Results",
+                    collapsible = T,
+                    collapsed = T,
+                    DT::dataTableOutput("enrichrthresh")
+                ),
+          box(width = 4,
+              title = "Enrichr Plot",
+              collapsible = T,
+              collapsed = F,
+              selectizeInput(inputId = "enrichplotx","X axis",choices = "placeholder"),
+              selectizeInput(inputId = "enrichploty","y axis",choices = "placeholder"),
+              plotOutput("enrichrplot")),
+          box(width = 6,
+              title = "Filtered Volcano",
+              collapsible = T,
+              collapsed = F,
+              plotOutput("filteredvolcano")
+              )
           )
         )))
       
@@ -83,6 +112,17 @@ server <- function(input, output) {
   rnaseq.df <- reactive({
     rnaseq<-read.csv(file = input$dbinput$datapath,header = T,quote = "",as.is = F)
   })
+  
+  summarystats.df <- reactive({
+    genes.n <- nrow(rnaseq.df())
+    genes.n
+    list("genes.n" = genes.n)
+  })
+  
+  
+  output$summarystats <- renderValueBox({
+    req(rnaseq.df())
+    valueBox(summarystats.df()$genes.n,subtitle = "total gene records",color = "red")})
   
   output$volcano.df <- DT::renderDataTable(rnaseq.df())
   
@@ -104,23 +144,36 @@ server <- function(input, output) {
    })
    
    output$threshtable <- DT::renderDataTable(
-     threshold_genes(),filter = 'top'
+     threshold_genes(),filter = 'top',extensions = 'Responsive'
    )
    
    output$fulltable <- DT::renderDataTable(
-     rnaseq.df(),filter = 'top'
+     rnaseq.df(),filter = 'top',extensions = 'Responsive'
    )
    
    enrichment <- reactive({
-     db <- "Reactome_2016"
-     gene.vector <- threshold_genes$gene.vector
-     enrichthresh.results <- enrichr(gene.vector,db)
+     db <- input$enrichrdbs
+     gene.vector <- as.vector(threshold_genes()$symbol)
+     enrichthresh.results <- data.frame(enrichr(gene.vector,db))
      enrichthresh.results
    })
    
-   output$enrichrthresh <- DT::renderDataTable({
-    enrichment()
-    })
+   output$enrichrthresh <- DT::renderDataTable(
+    enrichment(),extensions = 'Responsive'
+    )
+   
+   output$filteredvolcano <- renderPlot({
+     
+     selected_path_genes <- tolower(unlist(strsplit(enrichment()$Reactome_2016.Genes[input$enrichrplot_rows_selected],";")))
+     
+    
+     plot.fvolc <- ggplot(threshold_genes(),aes(x = log2FoldChange,y = (-log(padj,10))))
+     
+     plot.fvolc +
+       geom_point()
+     
+   })
+   
 }
 
 # Run the application 
