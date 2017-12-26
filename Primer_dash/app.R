@@ -307,7 +307,8 @@ server <- function(input, output) {
   
   
   output$gampcheck <- renderPrint({
-    
+    req(input$fwprimer)
+    req(input$rvprimer)
     genome.link <- paste0(input$amporg,"&wp_target=genome&wp_f=",input$fwprimer,"&wp_r=",input$rvprimer,"&Submit=submit&wp_size=",input$ampprod,"&wp_perfect=",input$ampminperf,"&wp_good=",input$ampmingood,"&boolshad.wp_flipReverse=0")
     
     genome <- read_html(genome.link) %>%
