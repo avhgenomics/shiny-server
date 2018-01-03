@@ -159,17 +159,18 @@ ui <- dashboardPage(
 server <- function(input, output) {
   
   primer_db <- reactive({
-    primer.table <- read.csv(file = input$dbinput$datapath,header = T,quote = "",as.is = F,stringsAsFactors = F)
+    primer.table <- read.csv(file = input$dbinput$datapath,header = T,quote = "",colClasses = "character")
      })
 
   master_db <- reactive({
-    master.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",as.is = F,stringsAsFactors = F)
+    master.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",colClasses = "character")
   })
   
   update_list <- reactive({
-    update.df<-read.csv(file = input$updaterinput$datapath,quote = "",header = input$csvheader,as.is=F,stringsAsFactors = F)
+    update.df<-read.csv(file = input$updaterinput$datapath,quote = "",header = input$csvheader,colClasses = "character")
     colnames(update.df) <- c("Manufacturing.ID","Code","Scanned")
-    update.df$Manufacturing.ID <- as.character(update.df$Manufacturing.ID) 
+    #update.df$Manufacturing.ID <- as.character(update.df$Manufacturing.ID)
+    update.df$Manufacturing.ID <- gsub("^0","",update.df$Manufacturing.ID)
     update.df %>% select(-Code) %>% arrange(Scanned) -> update.df
     update.df
   })
