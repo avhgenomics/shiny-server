@@ -21,6 +21,8 @@ ui <- dashboardPage(
     menuItem("Dashboard",tabName = "dashboard",icon = icon("dashboard")),
     menuItem("Primer Table",tabName = "primertable",icon = icon("th")),
     menuItem("Update Primers",tabName = "updater",icon = icon("shopping-cart")),
+    menuItem("Update Master",tabName = "masterupdate",icon = icon("shopping-cart")),
+    menuItem("Update RefIDs",tabName = "refupdate",icon = icon("shopping-cart")),
     menuItem("How to help",tabName = "tutorial",icon = icon("shopping-cart"))
   )
                    ),
@@ -112,6 +114,50 @@ ui <- dashboardPage(
           
           
   ),
+  tabItem(tabName = "masterupdate",
+          
+          h2("Update Master File"),
+          box(width = 6,
+              title = "Load the Master File",
+              fileInput("masterupdateinput", "Master CSV",
+                        multiple = F,
+                        accept = c("text/csv",
+                                   "text/comma-separated-values,text/plain",
+                                   ".csv"))),
+          
+          box(width = 6,
+              title = "Load the New COA File",
+              fileInput("coaupdateinput", "coa CSV",
+                        multiple = F,
+                        accept = c("text/csv",
+                                   "text/comma-separated-values,text/plain",
+                                   ".csv"))),
+          
+          box(width = 12,
+              title = "Updated Master Table",
+              DT::dataTableOutput("umout")),
+              downloadButton("saveupdatedmaster","Download Updated Master")
+          
+          ),
+  tabItem(tabName = "refupdate",
+          box(width = 6,
+              fileInput("refinput", "refID updates",
+                        multiple = F,
+                        accept = c("text/csv",
+                                   "text/comma-separated-values,text/plain",
+                                   ".csv"))
+              ),
+          box(width = 6,
+              fileInput("refmaster", "Master File",
+                        multiple = F,
+                        accept = c("text/csv",
+                                   "text/comma-separated-values,text/plain",
+                                   ".csv"))),
+          box(width = 12,
+              DT::dataTableOutput("refidmerged"),
+              downloadButton("refidmerged_dl","Download Updated Master"))
+          ),
+          
   tabItem(tabName = "updater",
           h2("Update Primer Box"),
           fluidPage(fluidRow(
@@ -162,6 +208,65 @@ server <- function(input, output) {
     primer.table <- read.csv(file = input$dbinput$datapath,header = T,quote = "",colClasses = "character")
      })
 
+  master_u.db <- reactive({
+    master_u.table <- read.csv(file = input$masterupdateinput$datapath,header = T,quote = "",colClasses = "character")
+  })
+  
+  refmast.db <- reactive({
+    master_u2.table <- read.csv(file = input$refmaster$datapath,header = T,quote = "",colClasses = "character")
+  })
+  refID.db <- reactive({
+    refid.table <- read.csv(file = input$refinput$datapath,header = T,quote = "",colClasses = "character")
+  })
+  
+  updaterefid <- reactive({
+    upref <- refmast.db()
+    ID_list <- list("refs" = refID.db()$Reference,
+                      "manufs" = refID.db()$Manufacturing.ID)
+    ID_seq_length <- seq(1:length(ID_list$refs))
+    
+    refcol <- grep(pattern = "Reference",x=names(upref),value = F,fixed = T)
+    manucol <- grep(pattern = "Manufacturing.ID",x=names(upref),value = F,fixed = T)
+  
+    for(i in ID_seq_length){
+      refid.tmp <- ID_list$refs[i]
+      refid.man <- ID_list$manufs[i]
+      #print(reorg.master2[reorg.master2$Reference == refid.tmp,2])
+      if(length(upref[upref$Reference == refid.tmp,refcol]) > 0 && upref[upref$Reference == refid.tmp,manucol] == "blank"){
+        upref[upref$Reference == refid.tmp,manucol] <- refid.man
+      }
+    }
+      
+    upref
+    
+  })
+  
+  output$refidmerged <- DT::renderDataTable(updaterefid(),extensions = 'Responsive')
+  
+  output$refidmerged_dl <- downloadHandler(filename = function(){
+    paste(Sys.Date(),"_Master_DB",".csv",sep = "")
+  },
+  content = function(file) {
+    write.csv(updaterefid(), file,quote = F,row.names = F,col.names = T)
+  },contentType = "text/csv")
+  
+  coa.db <- reactive({
+    coa.table <- read.csv(file = input$coaupdateinput$datapath,header = T,quote = "",colClasses = "character")
+    coa.table$Sequence <- gsub(pattern = " ",replacement = "",x = coa.table$Sequence)
+    coa.table
+  })
+  
+  updatedmaster <- reactive({
+    req(input$masterupdateinput)
+    req(input$coaupdateinput)
+    updatedmasterset <- rbind(master_u.db(),coa.db())
+  })
+  
+  output$umout <- DT::renderDataTable(updatedmaster())
+  output$masterupdateoutput <- DT::renderDataTable(master_u.db())
+  
+  output$coaupdateoutput <- DT::renderDataTable(coa.db())
+  
   master_db <- reactive({
     master.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",colClasses = "character")
   })
@@ -216,11 +321,10 @@ server <- function(input, output) {
   colnames(base_merge.df) <- mergeids
   final.merge <- merge(x=base_merge.df,y=master.df,by = "Manufacturing.ID",all.x = T)
   final.merge <- final.merge %>%
-    select(Location,Sequence.Name,Sequence,Length,GC..Content,Tm..50nM.NaCl..C,Order.Date,Sales.Order..,Reference..,Manufacturing.ID,Scanned) %>%
+    select(Location,Sequence.Name,Sequence,GC.Content,Manufacturing.ID,Sales.Order,Reference,Product,Purification,Sequence.Notes,Unit.Size,Bases,Anhydrous.Molecular.Weight,nmoles.OD,ug.OD,Extinction.Coefficient,Tm..50mM.NaCl..C,Modifications.and.Services,Final.OD,nmoles,Conc,Volume,Buffer,Print.Date,Well.Position,Scanned) %>%
     arrange(Location)
   final.merge
   })
-  
   output$merged_final <- DT::renderDataTable({
     req(input$updaterinput)
     req(input$masterinput)
@@ -230,7 +334,7 @@ server <- function(input, output) {
   })
   
   output$saveupdateddb <- downloadHandler(filename = function(){
-    paste("primerDB_",Sys.Date(),".csv",sep = "")
+    paste(Sys.Date(),"_primers_DB.csv",sep = "")
   },
   content = function(file) {
     write.csv(merged_final.db(), file,quote = F,row.names = F,col.names = F)
@@ -266,14 +370,14 @@ server <- function(input, output) {
   primer_stats <- reactive({
     primer_db() %>%
       filter(is.na(Manufacturing.ID) == FALSE) %>%
-      filter(is.na(Reference..) == FALSE) -> p.good
+      filter(is.na(Reference) == FALSE) -> p.good
     p.good.n <- nrow(p.good)
     
     primer_db() %>%
       filter(is.na(Manufacturing.ID) == FALSE) %>%
       filter(Manufacturing.ID != "EMPTY") %>%
       filter(Manufacturing.ID != "MANUAL") %>%
-      filter(is.na(Reference..)) -> p.errors
+      filter(is.na(Reference)) -> p.errors
     primer_db() %>%
       filter(Manufacturing.ID == "MANUAL") -> p.man
     
@@ -281,7 +385,7 @@ server <- function(input, output) {
     
     p.errors.simple <- p.errors %>%
       select(Location,Manufacturing.ID) %>%
-      mutate(Write.RefID.Here = "     ")
+      mutate(Reference = "     ")
     p.errors.n <- nrow(p.errors)
     
     p.empty <- primer_db() %>%
@@ -300,11 +404,15 @@ server <- function(input, output) {
          p.man.n = p.man.n)
   })
   
+  ptab <- reactive({
+    ptab.df <- primer_db()
+    ptab.df$Sequence.Name<-as.factor(ptab.df$Sequence.Name)
+    ptab.df
+  })
   output$primertable <- DT::renderDataTable(
-    primer_db(), filter = c('top'),extensions = 'Buttons', options = list(
+    ptab(), filter = c('top'),extensions = 'Buttons', options = list(
       dom = 'Bfrtip',
-      buttons = c('copy', 'csv', 'excel', 'pdf', 'print'))
-      )
+      buttons = c('copy', 'csv', 'excel', 'pdf', 'print')))
   
   
   output$gampcheck <- renderPrint({
@@ -396,6 +504,13 @@ server <- function(input, output) {
     req(input$updaterinput)
     add_locations()
   })
+  
+  output$saveupdatedmaster <- downloadHandler(filename = function(){
+    paste(Sys.Date(),"_Master_DB",".csv",sep = "")
+  },
+  content = function(file) {
+    write.csv(updatedmaster(), file,quote = F,row.names = F,col.names = T)
+  },contentType = "text/csv")
 
   }
 
