@@ -9,7 +9,7 @@
 
 library(shiny)
 library(shinydashboard)
-
+library(data.table)
 library(tidyverse)
 library(DT)
 library(rvest)
@@ -40,11 +40,15 @@ ui <- dashboardPage(
                          ".csv"))
     ),
     box(
-      title = "Updates",
+      title = "Updating Files?",
       status = "primary",
-      "12-19-2017: Fixed issue for multiple filtering; added buttons to the top of the primer table to save the information in several formats.",
+      "If you are updating files or locations, load your master file here.",
       tags$br(),
-      "12-17-2017: The app has been initiated.  Currently, the section to update primers is not functioning."
+      fileInput("masterinput", "Open Master CSV",
+                multiple = F,
+                accept = c("text/csv",
+                           "text/comma-separated-values,text/plain",
+                           ".csv"))
     )),
     
     box(title = "Summary Stats",
@@ -118,14 +122,6 @@ ui <- dashboardPage(
           
           h2("Update Master File"),
           box(width = 6,
-              title = "Load the Master File",
-              fileInput("masterupdateinput", "Master CSV",
-                        multiple = F,
-                        accept = c("text/csv",
-                                   "text/comma-separated-values,text/plain",
-                                   ".csv"))),
-          
-          box(width = 6,
               title = "Load the New COA File",
               fileInput("coaupdateinput", "coa CSV",
                         multiple = F,
@@ -147,12 +143,6 @@ ui <- dashboardPage(
                                    "text/comma-separated-values,text/plain",
                                    ".csv"))
               ),
-          box(width = 6,
-              fileInput("refmaster", "Master File",
-                        multiple = F,
-                        accept = c("text/csv",
-                                   "text/comma-separated-values,text/plain",
-                                   ".csv"))),
           box(width = 12,
               DT::dataTableOutput("refidmerged"),
               downloadButton("refidmerged_dl","Download Updated Master"))
@@ -172,28 +162,19 @@ ui <- dashboardPage(
             dataTableOutput("updateroutput")
             ),
             box(width = 6,
-                h3("Step Two: Load the Master File"),
-            fileInput("masterinput", "Master CSV",
-                      multiple = F,
-                      accept = c("text/csv",
-                                 "text/comma-separated-values,text/plain",
-                                 ".csv")),
+                h3("Master File Contents"),
             dataTableOutput("masteroutput"))
           ),
           box(width = 6,
-            h3("Step Three: Select the box to update"),
+            h3("Step Two: Select the box to update"),
             textInput("rack_in","Rack",value = "I"),
             textInput("col_in","Column",value = "1"),
             textInput("box_in","Box",value = "A"),
             dataTableOutput("updaterlocs")
           ),
           box(width = 12,
-              h3("Step Four: Check that the merge is correct"),
-              DT::dataTableOutput("mergedb")
-          ),
-          box(width = 12,
-              h3("Step Five: Updated DB / Save"),
-              DT::dataTableOutput("merged_final"),
+              h3("Step Three: Updated DB / Save"),
+              DT::dataTableOutput("mergedb"),
               downloadButton("saveupdateddb","Download Updated DB")
           )
           
@@ -205,15 +186,15 @@ ui <- dashboardPage(
 server <- function(input, output) {
   
   primer_db <- reactive({
-    primer.table <- read.csv(file = input$dbinput$datapath,header = T,quote = "",colClasses = "character")
+    primer.table <- read.csv(file = input$dbinput$datapath,header = T,quote = "",colClasses = "character",stringsAsFactors = F)
      })
 
   master_u.db <- reactive({
-    master_u.table <- read.csv(file = input$masterupdateinput$datapath,header = T,quote = "",colClasses = "character")
+    master_u.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",colClasses = "character")
   })
   
   refmast.db <- reactive({
-    master_u2.table <- read.csv(file = input$refmaster$datapath,header = T,quote = "",colClasses = "character")
+    master_u2.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",colClasses = "character")
   })
   refID.db <- reactive({
     refid.table <- read.csv(file = input$refinput$datapath,header = T,quote = "",colClasses = "character")
@@ -257,7 +238,7 @@ server <- function(input, output) {
   })
   
   updatedmaster <- reactive({
-    req(input$masterupdateinput)
+    req(input$masterinput)
     req(input$coaupdateinput)
     updatedmasterset <- rbind(master_u.db(),coa.db())
   })
@@ -268,7 +249,7 @@ server <- function(input, output) {
   output$coaupdateoutput <- DT::renderDataTable(coa.db())
   
   master_db <- reactive({
-    master.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",colClasses = "character")
+    master.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",colClasses = "character",stringsAsFactors = F)
   })
   
   update_list <- reactive({
@@ -284,60 +265,41 @@ server <- function(input, output) {
     req(update_list())
     locations_annotated.df <- cbind(
     update_list(),
-    Rack = boxlocs()$Rack,
-    Column = boxlocs()$Column,
-    Box = boxlocs()$Box,
-    X = boxlocs()$X,
-    Y = boxlocs()$Y,
     Location = boxlocs()$Location)
     locations_annotated.df
   })
   
+  scanned_box_master_annotate <- reactive({
+    box_loc_annotated <- as.data.table(add_locations())
+    master.df <- as.data.table(master_db())
+    merged.df <- merge(x = box_loc_annotated,y=master.df,by = "Manufacturing.ID",all.x = T)
+    pna <- names(primer_db())
+    merged.df <- merged.df %>%
+      select(pna)
+    merged.df
+    
+  })
+  
   mergedb.action <- reactive({
-    primer.db.merging <- primer_db()
-    primer.db.merging$Manufacturing.ID <- as.character(primer.db.merging$Manufacturing.ID)
-    primer.db.merging$Scanned <- as.character(primer.db.merging$Scanned)
-    newscans.df <- add_locations()
-    newscans.df$Scanned <- as.character(newscans.df$Scanned)
-    mergedb.df<- merge(x = primer.db.merging,y = newscans.df,by = "Location",all.x = T,suffixes = c(".old",".new"))
-    mergedb.df<-mergedb.df %>% 
-      mutate(Manufacturing.ID.merged = ifelse(is.na(Manufacturing.ID.new), Manufacturing.ID.old,Manufacturing.ID.new),
-             Scanned.merged = ifelse(is.na(Scanned.new), Scanned.old,Scanned.new))
+    primer.db <- as.data.table(primer_db())
+    scanned.box <- as.data.table(scanned_box_master_annotate())
+    setkey(primer.db,Location)
+    primer.db[scanned.box$Location,] <- scanned.box
+    primer.db
   })
   
   output$mergedb <- DT::renderDataTable({
     req(input$updaterinput)
     req(input$masterinput)
-    #mergedb.action()
-    mergedb.action() %>% select(Location,Manufacturing.ID.old,Scanned.old,Manufacturing.ID.new,Scanned.new,Manufacturing.ID.merged,Scanned.merged)
+    mergedb.action()
     
     })
-  
-  merged_final.db <- reactive({
-  master.df <- master_db()
-  master.df$Manufacturing.ID<-as.character(master.df$Manufacturing.ID)
-  mergedb.action() %>% select(Location,Manufacturing.ID.merged,Scanned.merged) -> base_merge.df
-  mergeids <- c("Location","Manufacturing.ID","Scanned")
-  colnames(base_merge.df) <- mergeids
-  final.merge <- merge(x=base_merge.df,y=master.df,by = "Manufacturing.ID",all.x = T)
-  final.merge <- final.merge %>%
-    select(Location,Sequence.Name,Sequence,GC.Content,Manufacturing.ID,Sales.Order,Reference,Product,Purification,Sequence.Notes,Unit.Size,Bases,Anhydrous.Molecular.Weight,nmoles.OD,ug.OD,Extinction.Coefficient,Tm..50mM.NaCl..C,Modifications.and.Services,Final.OD,nmoles,Conc,Volume,Buffer,Print.Date,Well.Position,Scanned) %>%
-    arrange(Location)
-  final.merge
-  })
-  output$merged_final <- DT::renderDataTable({
-    req(input$updaterinput)
-    req(input$masterinput)
-    
-    merged_final.db()
-    
-  })
   
   output$saveupdateddb <- downloadHandler(filename = function(){
     paste(Sys.Date(),"_primers_DB.csv",sep = "")
   },
   content = function(file) {
-    write.csv(merged_final.db(), file,quote = F,row.names = F,col.names = F)
+    write.csv(mergedb.action(), file,quote = F,row.names = F,col.names = F)
   },contentType = "text/csv")
   
   boxlocs <- reactive({
