@@ -15,7 +15,7 @@ library(tidyverse)
 
 # Define UI for application that draws a histogram
 ui <- dashboardPage(
-  dashboardHeader(),
+  dashboardHeader(title = "Biotools"),
   dashboardSidebar(sidebarMenu(
     menuItem("Cell Counting",tabName = "cellcalculator",icon = icon("th"))
   )
@@ -24,6 +24,7 @@ ui <- dashboardPage(
     tabItems(
       tabItem(
         tabName = "cellcalculator",
+        h2("Hemocytometry Calculator"),
         box(width = 4,
           title = "Hemocytometry",
           collapsible = T,
