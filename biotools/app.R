@@ -17,7 +17,9 @@ library(tidyverse)
 ui <- dashboardPage(
   dashboardHeader(title = "Biotools"),
   dashboardSidebar(sidebarMenu(
-    menuItem("Cell Counting",tabName = "cellcalculator",icon = icon("th"))
+    menuItem("Cell Counting",tabName = "cellcalculator",icon = icon("th")),
+    menuItem("Dilution Calculator",tabName = "dilutioncalculator",icon = icon("th")),
+    menuItem("Nanodrop QC (RNA)",tabName = "nanodroprna",icon = icon("th"))
   )
                    ),
   dashboardBody(
@@ -60,7 +62,46 @@ ui <- dashboardPage(
         )
         
         
-        )
+        ),
+      tabItem(
+        tabName = "dilutioncalculator",
+        h2("Dilution Calculator"),
+       box(title = "C1 * V1",
+           width = 6,
+           collapsible = T,
+           fluidRow(
+           numericInput(inputId = "c1",label = "C1",value = 0),
+           selectInput(inputId = "c1unit",label = "C1 unit",choices = list("M" = "M",
+                                                                           "uM" = "uM",
+                                                                           "nM" = "nM",
+                                                                           "pM" = "pM")))
+           ) 
+      ),
+      
+      tabItem(tabName = "nanodroprna",
+              h2("Nanodrop QC, RNA"),
+              box(title = "Nanodrop File Input",
+                  width = 4,
+                  collapsible = T,
+                  fileInput(inputId = "nanofile",label = "Select Nanodrop txt file",multiple = F,placeholder = ".txt file")
+                  ),
+              box(title = "Results",
+                  width = 8,
+                  collapsible = T,
+                  DT::dataTableOutput("nanotable")),
+              box(title = "QC Parameters",
+                  width = 4,
+                  collapsible = T,
+                  numericInput("abslower",label = "Lower ratio threshold",value = 1.8,min = 0,step = 0.01),
+                  numericInput("absupper",label = "Upper ratio threshold",value = 2.2,min = 0,step = 0.01)),
+              box(title = "QC Plot",
+                  width = 12,
+                  collapsible = T,
+                  plotOutput("qcplot"))
+              
+              )
+      
+      
       )
     )
     
@@ -109,6 +150,33 @@ server <- function(input, output) {
      )
      })
    
+   nano.df <- reactive({
+     read.csv(input$nanofile$datapath,quote = "",header = T)
+   })
+   
+   nano_qc.df <- reactive({
+     require(nano.df())
+     
+     
+     nano.df() %>%
+       mutate(nucleotide_status = ifelse(X260.280 >= input$abslower & X260.280 <= input$absupper,"pass","fail"),
+              other_status = ifelse(X260.230 >= input$abslower & X260.230 <= input$absupper,"pass","fail"),
+              status_summary = ifelse(nucleotide_status == "pass" & other_status == "pass","pass",
+                                      ifelse(nucleotide_status == "pass" & other_status == "fail","caution",
+                                             ifelse(nucleotide_status == "fail" & other_status == "pass","caution","fail")))) -> df
+     colnames(df[1]) = "SampleID"
+     df$SampleID <- as.factor(df$SampleID)
+     
+   })
+   
+   output$nanotable <- DT::renderDataTable(nano.df())
+   output$qcplot <- renderPlot({
+     plt.nano <- ggplot(nano_qc.df(),aes(x = SampleID))
+     plt.nano +
+       geom_hline(yintercept = input$abslower)+
+       geom_hline(yintercept = input$absupper)+
+       geom_point(aes(y=X260.280))
+   })
 }
 
 # Run the application 
