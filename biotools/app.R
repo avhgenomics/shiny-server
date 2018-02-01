@@ -80,24 +80,30 @@ ui <- dashboardPage(
       
       tabItem(tabName = "nanodroprna",
               h2("Nanodrop QC, RNA"),
-              box(title = "Nanodrop File Input",
-                  width = 4,
+              fluidRow(column(4,box(title = "Nanodrop File Input",
+                  width = 12,
                   collapsible = T,
                   fileInput(inputId = "nanofile",label = "Select Nanodrop txt file",multiple = F,placeholder = ".txt file")
                   ),
-              box(title = "Results",
-                  width = 8,
-                  collapsible = T,
-                  DT::dataTableOutput("nanotable")),
-              box(title = "QC Parameters",
-                  width = 4,
-                  collapsible = T,
-                  numericInput("abslower",label = "Lower ratio threshold",value = 1.8,min = 0,step = 0.01),
-                  numericInput("absupper",label = "Upper ratio threshold",value = 2.2,min = 0,step = 0.01)),
-              box(title = "QC Plot",
+                  box(title = "QC Parameters",
+                      width = 12,
+                      collapsible = T,
+                      numericInput("abslower",label = "Lower ratio threshold",value = 1.8,min = 0,step = 0.01),
+                      numericInput("absupper",label = "Upper ratio threshold",value = 2.2,min = 0,step = 0.01))
+                  ),
+              column(8,box(title = "Results",
                   width = 12,
                   collapsible = T,
-                  plotOutput("qcplot"))
+                  DT::dataTableOutput("nanotable")))),
+              box(title = "QC Plot",
+                  width = 6,
+                  collapsible = T,
+                  plotOutput("qcplot")
+                  ),
+              box(title = "QC Caution / Fail",
+                  width = 6,
+                  collapsible = T,
+                  DT::dataTableOutput("failed_samples"))
               
               )
       
@@ -151,32 +157,38 @@ server <- function(input, output) {
      })
    
    nano.df <- reactive({
-     read.csv(input$nanofile$datapath,quote = "",header = T)
-   })
-   
-   nano_qc.df <- reactive({
-     require(nano.df())
-     
-     
-     nano.df() %>%
+     #nano.df <- read.csv(input$nanofile$datapath,quote = "",header = T)
+     nano.df <- read.delim(file = input$nanofile$datapath,quote = "",header = T,sep = "\t")
+     colnames(nano.df) <- c("SampleID",	"User.ID",	"Date",	"Time",	"ng.ul",	"A260",	"A280",	"X260.280",	"X260.230",	"Constant",	"Cursor Pos.",	"Cursor abs.",	"340 raw")
+     nano.df %>%
        mutate(nucleotide_status = ifelse(X260.280 >= input$abslower & X260.280 <= input$absupper,"pass","fail"),
               other_status = ifelse(X260.230 >= input$abslower & X260.230 <= input$absupper,"pass","fail"),
               status_summary = ifelse(nucleotide_status == "pass" & other_status == "pass","pass",
                                       ifelse(nucleotide_status == "pass" & other_status == "fail","caution",
                                              ifelse(nucleotide_status == "fail" & other_status == "pass","caution","fail")))) -> df
-     colnames(df[1]) = "SampleID"
-     df$SampleID <- as.factor(df$SampleID)
-     
+     df
    })
    
-   output$nanotable <- DT::renderDataTable(nano.df())
+   
+   output$nanotable <- DT::renderDataTable(nano.df(),extensions = 'Responsive')
+   
+   
    output$qcplot <- renderPlot({
-     plt.nano <- ggplot(nano_qc.df(),aes(x = SampleID))
+     plt.nano <- ggplot(nano.df(),aes(x = SampleID))
      plt.nano +
        geom_hline(yintercept = input$abslower)+
        geom_hline(yintercept = input$absupper)+
-       geom_point(aes(y=X260.280))
+       geom_point(aes(y = X260.280),color = "#05c46b")+
+       geom_point(aes(y = X260.230),shape = 18,size = 3,color = "#575fcf")
    })
+   
+   failed.df <- reactive({
+     df <- nano.df() %>%
+       filter(status_summary %in% c("fail","caution")) %>%
+       select(SampleID,nucleotide_status,other_status,status_summary)
+     df
+   })
+   output$failed_samples <- DT::renderDataTable(failed.df(),extensions = 'Responsive')
 }
 
 # Run the application 
