@@ -190,7 +190,7 @@ server <- function(input, output) {
      })
 
   master_u.db <- reactive({
-    master_u.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",colClasses = "character")
+    master_u.table <- read.csv(file = input$masterinput$datapath,header = T,quote = "",colClasses = "character",stringsAsFactors = F)
   })
 
   refmast.db <- reactive({
