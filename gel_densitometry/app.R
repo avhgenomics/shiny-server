@@ -12,6 +12,7 @@ library(shinydashboard)
 library(tidyverse)
 library(ggplot2)
 library(zoo)
+library(jpeg)
 
 # Define UI for application that draws a histogram
 ui <- shinydashboard::dashboardPage(
@@ -44,7 +45,7 @@ ui <- shinydashboard::dashboardPage(
           box(width = 4,
           title = "parameters",
           numericInput(inputId = "maxima_ladder_thresh",label = "Ladder Maxima Threshold",value = 3,min = 1,step = 1),
-          numericInput(inputId = "signal_ladder_thresh",label = "Ladder Signal Threshold",value = 30,min = 1,step = 10),
+          numericInput(inputId = "signal_ladder_thresh",label = "Ladder Signal Threshold",value = 0.1,min = 0,step = 0.1),
           numericInput(inputId = "signal_ladder_smooth",label = "Ladder Signal Smooth",value = 5,min = 0,step = 1),
           selectInput(inputId = "ladderID",label = "What Ladder?",choices = list("100 bp (G210a)" = "g210a"),selected = "g210a",multiple = F)
         ),
@@ -72,7 +73,7 @@ ui <- shinydashboard::dashboardPage(
         collapsible = T,
       box(width = 3,
           title = "Signal Options",
-          numericInput(inputId = "gel_ladder_label_y",label = "What Y to place ladder labels?",value = (-10),step = 10),
+          numericInput(inputId = "gel_ladder_label_y",label = "What Y to place ladder labels?",value = (-0.1),step = 0.1),
           numericInput(inputId = "pred_pixel",label = "Predict Band Size",value = 500,step = 10),
           checkboxInput(inputId = "area_check",label = "Calculate Area Stats?",value = F),
           uiOutput("area_opts"),
@@ -101,7 +102,8 @@ server <- function(input, output) {
   #end functions
   
    gel <- reactive({
-     gel <- keras::image_to_array(keras::image_load(input$imagefile$datapath,grayscale = T))
+     gel <- jpeg::readJPEG(input$imagefile$datapath)
+     #gel <- keras::image_to_array(keras::image_load(input$imagefile$datapath,grayscale = T))
      gel
    })
    
@@ -116,7 +118,7 @@ server <- function(input, output) {
        w1 = lane_width[i]
        w2 = w1+input$lane_extend
        gel.label = lane_labels[i]
-       master.list[[gel.label]] <- rowMeans(gel()[input$h_start:input$h_end,w1:w2,1])
+       master.list[[gel.label]] <- rowMeans(gel()[input$h_start:input$h_end,w1:w2])
      }
      #print(master.list)
      df <- as.data.frame(master.list)
