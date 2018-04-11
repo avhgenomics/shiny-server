@@ -13,13 +13,14 @@ library(tidyverse)
 library(ggplot2)
 library(zoo)
 library(jpeg)
+library(reshape2)
 
 # Define UI for application that draws a histogram
 ui <- shinydashboard::dashboardPage(
   dashboardHeader(title = "Image Analyzer Test"),
   dashboardSidebar(),
   dashboardBody(
-    box(collapsible = T,
+    box(width = 12,collapsible = T,
       title = "Gel Information",
     box(width = 12,
         title = "Load Image",
@@ -29,7 +30,8 @@ ui <- shinydashboard::dashboardPage(
       DT::dataTableOutput("gel_df")
     )
     ),
-    box(collapsible = T,
+    box(width = 4,
+        collapsible = T,
       title = "Options",
         textInput(inputId = "lanes",label = "Label Lanes separated by ,"),
         textInput(inputId = "lane_width",label = "Lane Start locations separated by ,"),
@@ -38,6 +40,12 @@ ui <- shinydashboard::dashboardPage(
         numericInput(inputId = "h_end",label = "vertical cutoff (bottom)",value = 100,min = 1,step = 50),
         numericInput(inputId = "bkg",label = "background value",value = 0,min = 0,step = 1),
         actionButton(inputId = "set_options",label = "Click after options are set")),
+    box(width = 8,
+        collapsible = T,
+        title = "Gel Image",
+        plotOutput("gel_image",hover = hoverOpts(id ="gel_hover")),
+        textOutput("gel_hover_coords")
+        ),
     box(title = "Ladder Stats",
         width = 12,
         collapsible = T,
@@ -126,6 +134,21 @@ server <- function(input, output) {
      df$normalized_signal <- df$value - input$bkg
      df$pixel_y = seq(from = input$h_start, to = input$h_end)
      df
+   })
+   
+   output$gel_image <- renderPlot({
+     t.m <- melt(gel()[input$h_start:input$h_end,])
+     plot.tm <- ggplot(t.m,aes(x = Var2,y=-Var1))
+     
+     plot.tm+geom_raster(aes(fill = value))+
+       scale_fill_gradient(low = "#000000",high = "#ffffff")
+   })
+   
+   output$gel_hover_coords <- renderText({
+     if(!is.null(input$gel_hover)){
+       hover = input$gel_hover$x
+       paste("Lane X coord:",round(hover,0),"\n","pixel value:")
+     }
    })
    
    samples_processed <- reactive({
