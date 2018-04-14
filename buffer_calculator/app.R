@@ -14,19 +14,23 @@ library(tidyverse)
 # Define UI for application that draws a histogram
 ui <- shinydashboard::dashboardPage(
   dashboardHeader(),
-  dashboardSidebar(fileInput(inputId = "buffer_file",label = "load CSV",multiple = F),
-                   numericInput("vol_num",label = "Number of mL",value = 1,min = 1,step = 1),
-                   uiOutput("buffer_opts")
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem(text = "Recipes",tabName = "buffer_tab")
+    )
                    ),
   dashboardBody(
-    box(
-      
-    ),
-    box(width = 12,
-    box(width = 6,title = "Buffer Recipe / Sample",collapsible = T,
-        DT::dataTableOutput(outputId = "buffers_raw")),
-    box(width = 6,Title = "Buffer Recipe Calculated",collapsible = T,
-        DT::dataTableOutput(outputId = "buffer_calculations"))
+    tabItems(
+      tabItem(tabName = "buffer_tab",
+              box(width = 6,collapsible = T,
+                  title = "Buffer Options",
+                  fileInput(inputId = "buffer_file",label = "load CSV",multiple = F),
+                  numericInput("vol_num",label = "Number of mL",value = 1,min = 1,step = 1),
+                  uiOutput("buffer_opts")),
+          box(width=12,title = "Buffer Recipe / Sample",collapsible = T,
+              DT::dataTableOutput(outputId = "buffers_raw"),
+              htmlOutput("buffer_text"))
+      )
     )
   )
 )
@@ -49,6 +53,7 @@ options(DT.options = list(pageLength = 50))
   })
   
   buffer_conditions.df <- reactive({
+    req(!is.null(input$buffer_file))
    df <- buffer.df() %>%
      filter(Experiment == input$experiment_select) %>%
      filter(Buffer == input$buffer_select) %>%
@@ -56,12 +61,15 @@ options(DT.options = list(pageLength = 50))
             Stock = paste(Stock.Concentration,Stock.unit),
             Final = paste(Final.Concentration,Final.Unit)) %>%
      select(Reagent,Stock,Final,Amount,Notes)
-   colnames(df) <- c("Reagent","Stock Concentration","Final Concentration","Amount to Add","Additional Notes")
+   
+   amount.name <- paste("For",input$vol_num,"mL")
+   colnames(df) <- c("Reagent","Stock Concentration","Final Concentration",amount.name,"Additional Notes")
    
    df
      })
   
-  output$buffers_raw <- DT::renderDataTable(buffer_conditions.df(),caption = paste("Experiment / Buffer:",input$experiment_select,"/",input$buffer_select))
+  output$buffer_text <- renderUI({HTML(paste("Experiment:",tags$strong(input$experiment_select),tags$br(),"Buffer:",tags$strong(input$buffer_select)))})
+  output$buffers_raw <- DT::renderDataTable(buffer_conditions.df())
 }
 
 # Run the application 
