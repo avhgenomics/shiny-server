@@ -13,10 +13,11 @@ library(shinyBS)
 library(tidyverse)
 # Define UI for application that draws a histogram
 ui <- shinydashboard::dashboardPage(
-  dashboardHeader(),
+  dashboardHeader(title = "Buffer Calculator"),
   dashboardSidebar(
     sidebarMenu(
-      menuItem(text = "Recipes",tabName = "buffer_tab")
+      menuItem(text = "Recipes",tabName = "buffer_tab"),
+      menuItem(text = "Agarose Gels",tabName = "agarose_tab")
     )
                    ),
   dashboardBody(
@@ -30,7 +31,17 @@ ui <- shinydashboard::dashboardPage(
           box(width=12,title = "Buffer Recipe / Sample",collapsible = T,
               DT::dataTableOutput(outputId = "buffers_raw"),
               htmlOutput("buffer_text"))
-      )
+      ),
+      tabItem(tabName = "agarose_tab",
+              box(width = 3, collapsible = T,
+                  title = "Set Gel Options",
+                  numericInput(inputId = "gel_percent",label = "Gel Percentage",value = 1.0,min = 0,step = 0.5),
+                  numericInput(inputId = "tae_volume",label = "Volume Needed",value = 50,min = 0,step = 10)
+                  ),
+              box(width = 9, collapsible = T,
+                  title = "Gel Recipe",
+                  DT::dataTableOutput("gel_dt"))
+              )
     )
   )
 )
@@ -70,6 +81,28 @@ options(DT.options = list(pageLength = 50))
   
   output$buffer_text <- renderUI({HTML(paste("Experiment:",tags$strong(input$experiment_select),tags$br(),"Buffer:",tags$strong(input$buffer_select)))})
   output$buffers_raw <- DT::renderDataTable(buffer_conditions.df(),extensions = 'Responsive')
+  
+  
+  #Agarose Gels
+  agarose.df <- reactive({
+    df <- data.frame(Reagent = c("Agarose","TAE","Ethidium Bromide"),
+                     Final.Concentration = c(input$gel_percent,input$tae_volume,0.5),
+                     Final.Unit = c("%","mL","µg/mL"),
+                     mass.unit = c("grams","mL","µl"))
+    
+    grams <- (input$gel_percent / 100)*input$tae_volume
+    
+    df <- df %>%
+      mutate(final.label = paste(Final.Concentration,Final.Unit),
+             calculated = c(grams,input$tae_volume,(0.05*input$tae_volume)),
+             calculated.label = paste(calculated,mass.unit)) %>%
+      select(Reagent,final.label,calculated.label)
+    colnames(df) <- c("Reagent","Final Concentration","Amounts to Add")
+    
+    df
+  })
+  
+  output$gel_dt <- DT::renderDataTable(agarose.df(),extensions = "Responsive")
 }
 
 # Run the application 
