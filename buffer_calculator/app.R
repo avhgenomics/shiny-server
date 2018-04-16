@@ -69,7 +69,7 @@ options(DT.options = list(pageLength = 50))
      })
   
   output$buffer_text <- renderUI({HTML(paste("Experiment:",tags$strong(input$experiment_select),tags$br(),"Buffer:",tags$strong(input$buffer_select)))})
-  output$buffers_raw <- DT::renderDataTable(buffer_conditions.df())
+  output$buffers_raw <- DT::renderDataTable(buffer_conditions.df(),extensions = 'Responsive')
 }
 
 # Run the application 
