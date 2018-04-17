@@ -24,7 +24,14 @@ ui <- dashboardPage(skin = "red",
   
   dashboardSidebar(sidebarMenu(
     menuItem("Home",tabName = "home",icon = icon("home")),
-    menuItem("Visualization",tabName = "visualization",icon = icon("home"))
+    menuItem("Visualization",tabName = "visualization",icon = icon("home")),
+    menuItem(text = "BioKIT Tools",
+             menuSubItem(text = "Biotools",href = "http://avh.science:3838/biotools/"),
+             menuSubItem(text = "Buffer Calcs",href = "http://avh.science:3838/buffer_calculator/"),
+             menuSubItem(text = "Gel Analysis",href = "http://avh.science:3838/gel_densitometry/"),
+             menuSubItem(text = "Primer Dashboard",href = "http://avh.science:3838/Primer_dash/"),
+             menuSubItem(text = "RNAseq Browser",href = "http://avh.science:3838/rnaseqbrowser/")
+    )
     )),
   
   dashboardBody(

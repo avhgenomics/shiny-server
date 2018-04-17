@@ -23,7 +23,14 @@ ui <- dashboardPage(
     menuItem("Update Primers",tabName = "updater",icon = icon("shopping-cart")),
     menuItem("Update Master",tabName = "masterupdate",icon = icon("shopping-cart")),
     menuItem("Update RefIDs",tabName = "refupdate",icon = icon("shopping-cart")),
-    menuItem("How to help",tabName = "tutorial",icon = icon("shopping-cart"))
+    menuItem("How to help",tabName = "tutorial",icon = icon("shopping-cart")),
+    menuItem(text = "BioKIT Tools",
+             menuSubItem(text = "Biotools",href = "http://avh.science:3838/biotools/"),
+             menuSubItem(text = "Buffer Calcs",href = "http://avh.science:3838/buffer_calculator/"),
+             menuSubItem(text = "Gel Analysis",href = "http://avh.science:3838/gel_densitometry/"),
+             menuSubItem(text = "Primer Dashboard",href = "http://avh.science:3838/Primer_dash/"),
+             menuSubItem(text = "RNAseq Browser",href = "http://avh.science:3838/rnaseqbrowser/")
+    )
   )
                    ),
   dashboardBody(

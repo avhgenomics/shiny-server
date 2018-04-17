@@ -17,8 +17,14 @@ library(reshape2)
 
 # Define UI for application that draws a histogram
 ui <- shinydashboard::dashboardPage(
-  dashboardHeader(title = "Image Analyzer Test"),
-  dashboardSidebar(),
+  dashboardHeader(title = "Gel Analysis"),
+  dashboardSidebar(menuItem(text = "BioKIT Tools",
+                            menuSubItem(text = "Biotools",href = "http://avh.science:3838/biotools/"),
+                            menuSubItem(text = "Buffer Calcs",href = "http://avh.science:3838/buffer_calculator/"),
+                            menuSubItem(text = "Gel Analysis",href = "http://avh.science:3838/gel_densitometry/"),
+                            menuSubItem(text = "Primer Dashboard",href = "http://avh.science:3838/Primer_dash/"),
+                            menuSubItem(text = "RNAseq Browser",href = "http://avh.science:3838/rnaseqbrowser/")
+  )),
   dashboardBody(
     box(width = 12,collapsible = T,
       title = "Gel Information",

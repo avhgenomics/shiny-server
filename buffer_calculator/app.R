@@ -16,8 +16,15 @@ ui <- shinydashboard::dashboardPage(
   dashboardHeader(title = "Buffer Calculator"),
   dashboardSidebar(
     sidebarMenu(
-      menuItem(text = "Recipes",tabName = "buffer_tab"),
-      menuItem(text = "Agarose Gels",tabName = "agarose_tab")
+      menuItem(text = "Recipes",tabName = "buffer_tab",icon = icon("book",lib = "font-awesome")),
+      menuItem(text = "Agarose Gels",tabName = "agarose_tab",icon = icon("flask",lib = "font-awesome")),
+      menuItem(text = "BioKIT Tools",
+               menuSubItem(text = "Biotools",href = "http://avh.science:3838/biotools/"),
+               menuSubItem(text = "Buffer Calcs",href = "http://avh.science:3838/buffer_calculator/"),
+               menuSubItem(text = "Gel Analysis",href = "http://avh.science:3838/gel_densitometry/"),
+               menuSubItem(text = "Primer Dashboard",href = "http://avh.science:3838/Primer_dash/"),
+               menuSubItem(text = "RNAseq Browser",href = "http://avh.science:3838/rnaseqbrowser/")
+               )
     )
                    ),
   dashboardBody(
@@ -38,6 +45,11 @@ ui <- shinydashboard::dashboardPage(
                   numericInput(inputId = "gel_percent",label = "Gel Percentage",value = 1.0,min = 0,step = 0.5),
                   numericInput(inputId = "tae_volume",label = "Volume Needed",value = 50,min = 0,step = 10)
                   ),
+              box(width = 9,collapsible = T,
+                  title = "Common Casting Values",
+                  DT::dataTableOutput("casting_info")
+                
+              ),
               box(width = 9, collapsible = T,
                   title = "Gel Recipe",
                   DT::dataTableOutput("gel_dt"))
@@ -103,6 +115,12 @@ options(DT.options = list(pageLength = 50))
   })
   
   output$gel_dt <- DT::renderDataTable(agarose.df(),extensions = "Responsive")
+  
+  casting.table <- reactive({
+    df <- read.csv(file = "files/casting_values.csv",header = T,quote = "",stringsAsFactors = F)
+  })
+  
+  output$casting_info <- DT::renderDataTable(casting.table(),escape = F)
 }
 
 # Run the application 

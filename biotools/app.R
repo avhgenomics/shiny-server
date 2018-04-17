@@ -19,7 +19,14 @@ ui <- dashboardPage(
   dashboardSidebar(sidebarMenu(
     menuItem("Cell Counting",tabName = "cellcalculator",icon = icon("th")),
     menuItem("Dilution Calculator",tabName = "dilutioncalculator",icon = icon("th")),
-    menuItem("Nanodrop QC (RNA)",tabName = "nanodroprna",icon = icon("th"))
+    menuItem("Nanodrop QC (RNA)",tabName = "nanodroprna",icon = icon("th")),
+    menuItem(text = "BioKIT Tools",
+             menuSubItem(text = "Biotools",href = "http://avh.science:3838/biotools/"),
+             menuSubItem(text = "Buffer Calcs",href = "http://avh.science:3838/buffer_calculator/"),
+             menuSubItem(text = "Gel Analysis",href = "http://avh.science:3838/gel_densitometry/"),
+             menuSubItem(text = "Primer Dashboard",href = "http://avh.science:3838/Primer_dash/"),
+             menuSubItem(text = "RNAseq Browser",href = "http://avh.science:3838/rnaseqbrowser/")
+    )
   )
                    ),
   dashboardBody(
