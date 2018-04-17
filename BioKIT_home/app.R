@@ -30,7 +30,7 @@ ui <- dashboardPage(
         "Calculates the buffer recipes for a given volume after providing a recipe csv file (see the formats section)",tags$br(),tags$br(),
         "Also contains common agarose gel calculations and have started to include common casting / loading volumes as well."),
     
-    box(title = "Gel Analysis",collapsible = T,width = 4,status = "success",solidHeader = T,
+    box(title = "Gel Analysis",collapsible = T,width = 4,status = "warning",solidHeader = T,
         "Tools for analyzing signal returned from agarose gels;",tags$br(),tags$br(),
         "Includes:",tags$br(),
         "Basic Densitometry",
@@ -39,7 +39,7 @@ ui <- dashboardPage(
         "Band size prediction",tags$br(),
         "Area estimations"),
     
-    box(title = "Primer Dashboard",collapsible = T,width = 4,status = "success",solidHeader = T,
+    box(title = "Primer Dashboard",collapsible = T,width = 4,status = "warning",solidHeader = T,
         "This is the original tool for managing primers.",tags$br(),
         "Includes:",tags$br(),
         "Quick reference from a csv file",tags$br(),
@@ -49,7 +49,7 @@ ui <- dashboardPage(
         "mobile friendly"
         ),
     
-    box(title = "RNASeq Browser",collapsible = T,width = 4,status = "success",solidHeader = T,
+    box(title = "RNASeq Browser",collapsible = T,width = 4,status = "warning",solidHeader = T,
         "Provides basic information from RNASeq results in csv format",tags$br(),
         "differential genes, adjustable cut-offs",tags$br(),
         "Basic Enrichment Statistics")
