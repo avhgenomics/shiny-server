@@ -11,7 +11,7 @@ library(shiny)
 library(shinydashboard)
 library(tidyverse)
 library(ggplot2)
-library(ggthemes)
+
 
 # Define UI for application that draws a histogram
 ui <- shinydashboard::dashboardPage(
@@ -41,10 +41,10 @@ server <- function(input, output) {
    #Dataframes
    raw.df <- reactive({
      read.csv(file = input$ct_csv$datapath,header = T,sep = ",",quote = "",stringsAsFactors = F)
-     
-     
+
+
    })
-   
+
    work.df <- reactive({
     req(raw.df())
      if(input$techrepscheck == T){
@@ -58,10 +58,10 @@ server <- function(input, output) {
      } else {
        raw.df()
      }
-     
+
    })
-   
-   
+
+
    mCt.df <- reactive({
      req(!is.null(input$mCtgrouping))
       work.df() %>%
@@ -72,52 +72,52 @@ server <- function(input, output) {
         distinct(Ct,.keep_all = T) %>%
         select(-Replicate)
     })
-   
+
    dCt.df <- reactive({
      req(!is.null(input$dCtgrouping))
      mCt.df() %>%
        group_by_at(.vars = input$dCtgrouping) %>%
        mutate(dCt = Ct - Ct[Gene == input$housekeeper],
               dSD = sqrt(((sd.Ct^2)+(sd.Ct[Gene == input$housekeeper]^2))/(n - 1)))
-       
+
    })
-   
+
    ddCt.df <- reactive({
      req(!is.null(input$ddCtgrouping))
      dCt.df() %>%
        group_by_at(.vars = input$ddCtgrouping) %>%
        mutate(ddCt = dCt - dCt[Condition == input$control_condition])
    })
-   
+
    #UIs
    output$techrepsui <- renderUI({
      req(raw.df())
      if(input$techrepscheck){
      tagList(selectInput(inputId = "techrepsgrouping",label = "Group tech reps by:",choices = colnames(raw.df()),multiple = T))}
    })
-   
+
    output$mCtUI <- renderUI({
      req(!is.null(work.df()))
      tagList(selectInput(inputId = "mCtgrouping",label = "Group mean Ct values by:",choices = colnames(work.df()),multiple = T))
    })
-   
+
    output$dCtUI <- renderUI({
      req(!is.null(mCt.df()))
      tagList(selectInput(inputId = "dCtgrouping",label = "group dCt values by:",choices = colnames(mCt.df()),multiple = T),
              selectInput(inputId = "housekeeper",label = "Select Housekeeping Gene",choices = unique(mCt.df()$Gene),multiple = F))
    })
-   
+
    output$ddCtUI <- renderUI({
      req(!is.null(dCt.df()))
      tagList(selectInput(inputId = "ddCtgrouping",label = "group ddCt values by:",choices = colnames(dCt.df()),multiple = T),
              selectInput(inputId = "control_col",label = "Select Control Condition using:",choices = colnames(dCt.df()),multiple = F))
    })
-   
+
    output$ddCtUI2 <- renderUI({
      req(!is.null(input$control_col))
      tagList(selectInput(inputId = "control_condition",label = "Base Condition:",choices = unique(dCt.df()[,input$control_col]),multiple = F))
    })
-   
+
    output$plot_settings <- renderUI({
      req(ddCt.df())
      data.df <- switch(input$plot_dataset,
@@ -130,9 +130,9 @@ server <- function(input, output) {
              selectInput(inputId = "yaxis",label = "Select Y axis",choices = colnames(data.df),multiple = F),
              selectInput(inputId = "plot_gene",label = "Select Gene",choices = unique(ddCt.df()$Gene),multiple = F))
    })
-   
+
    #tables
-   
+
    tableselected <- reactive({
      req(raw.df())
      switch(input$viewtable,
@@ -142,18 +142,18 @@ server <- function(input, output) {
             "dCt" = dCt.df(),
             "ddCt" = ddCt.df())
    })
-   
+
    output$tableswitch <- DT::renderDataTable(tableselected(),extensions = 'Responsive')
-   
-   
+
+
    #Plotting
-   
+
    data_plot.df <- reactive({
      req(ddCt.df())
      ddCt.df() %>%
        filter(Gene == input$plot_gene)
    })
-   
+
    output$expression_plot <- renderPlot({
      req(data_plot.df())
      if(input$plot_dataset == "ddCt"){
@@ -168,11 +168,9 @@ server <- function(input, output) {
        geom_col(position = position_dodge())+
        theme(aspect.ratio = 4/3)
    })
-   
-   
+
+
 }
 
-# Run the application 
+# Run the application
 shinyApp(ui = ui, server = server)
-
-
