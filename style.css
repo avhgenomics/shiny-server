@@ -1,26 +1,148 @@
-.card {
-    display: grid;
-    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
-    transition: 0.3s;
-    border-radius: 5px; /* 5px rounded corners */
+@import url('https://fonts.googleapis.com/css?family=Raleway');
+@import url('https://fonts.googleapis.com/css?family=Oswald');
+@import url(https://fonts.googleapis.com/css?family=Roboto:300,400);
+@import url(https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css);
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
 }
 
-.card h2 {
- text-align: center;
+.intro {
+  height: 100%;
+  width: 100%;
+  margin: auto;
+  background: url('app_section_files/alberta-amazing-attraction-417074.jpg') no-repeat 50% 50%;
+  display: table;
+  top: 0;
+  background-size: cover;
 }
 
-.card p {
-  text-align: justify;
-  padding: 5%;
+.intro .inner {
+  display: table-cell;
+  vertical-align: middle;
+  width: 100%;
+  max-width: none;
 }
 
-.cardcontainer {
-  display: grid;
-  padding: 1rem;
-  grid-template-columns: repeat(auto-fit,minmax(320px, 1fr));
-  grid-gap: 1rem;
+.content {
+  max-width: 500px;
+  margin: 0 auto;
+  text-align: center;
 }
-/* Add rounded corners to the top left and the top right corner of the image */
-img {
-    border-radius: 5px 5px 0 0;
+
+.content h1 {
+  font-family: 'Raleway', sans-serif;
+  color: #ffff00;
+  text-shadow: 0px 0px 300px #000;
+  font-size:500%;
+}
+
+.btn {
+  border-radius: 9px;
+  font-family: 'Oswald',sans-serif;
+  color: #ff00ff;
+  font-size: 130%;
+  padding: 10px 20px;
+  border: solid #036AB1 3px;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.btn:hover {
+  color: #00ffff;
+  border: solid #fff 3px;
+}
+
+/*cardsnippet */
+
+.snip1519 {
+  font-family: 'Roboto', Arial, sans-serif;
+  position: relative;
+  float: left;
+  overflow: hidden;
+  margin: 10px 1%;
+  min-width: 250px;
+  max-width: 310px;
+  width: 100%;
+  background-color: #ffffff;
+  border-radius: 5px;
+  border-top: 5px solid #d2652d;
+  color: #9e9e9e;
+  text-align: center;
+  font-size: 16px;
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.15);
+}
+
+.snip1519 *,
+.snip1519 *:before {
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  -webkit-transition: all 0.1s ease-out;
+  transition: all 0.1s ease-out;
+}
+
+.snip1519 figcaption {
+  padding: 12% 10% 14%;
+}
+
+.snip1519 i {
+  font-size: 54px;
+  color: #fff;
+  width: 80px;
+  line-height: 80px;
+  background-color: #d2652d;
+  border-radius: 50%;
+  padding: 0;
+  margin: 0 0 10px;
+  text-align: center;
+  display: inline-block;
+}
+
+.snip1519 h3 {
+  color: #0079cf;
+  font-size: 20px;
+  font-weight: 300;
+  line-height: 24px;
+  margin: 10px 0;
+}
+
+.snip1519 p {
+  font-size: 0.9em;
+  font-weight: 300;
+  margin: 0 0 20px;
+}
+
+.snip1519 .button {
+  text-decoration: none;
+  color: #777;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  border-radius: 5px;
+  padding: 5px 10px;
+  display: inline-block;
+  position: relative;
+  z-index: 1;
+}
+
+.snip1519 .button:before {
+  background-color: #d2652d;
+  position: absolute;
+  top: 100%;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  content: '';
+  z-index: -1;
+  opacity: 0;
+}
+
+.snip1519 .button:hover {
+  color: #fff;
+}
+
+.snip1519 .button:hover:before {
+  top: 0;
+  opacity: 1;
 }
