@@ -11,14 +11,15 @@ html, body {
 }
 
 .intro {
-  height: 100%;
+  height: 50%;
   width: 100%;
   margin: auto;
-  background: url('app_section_files/alberta-amazing-attraction-417074.jpg') no-repeat 50% 50%;
+  background: url('app_section_files/4kadventureclimb691668.jpg') no-repeat 50% 50%;
   display: table;
   top: 0;
   background-size: cover;
 }
+
 
 .intro .inner {
   display: table-cell;
@@ -35,9 +36,9 @@ html, body {
 
 .content h1 {
   font-family: 'Raleway', sans-serif;
-  color: #ffff00;
+  color: #fff;
   text-shadow: 0px 0px 300px #000;
-  font-size:500%;
+  font-size:400%;
 }
 
 .btn {
