@@ -13,6 +13,9 @@ library(shinydashboard)
 
 source(file = "calculator_scripts/pcr_mix.r")
 source(file = "calculator_scripts/hemocytometry.r")
+source(file = "calculator_scripts/general_modules.r")
+source(file = "calculator_scripts/Ct_opts.r")
+source(file = "calculator_scripts/primer_opts.r")
 
 
 # Define UI for application that draws a histogram
@@ -20,7 +23,8 @@ ui <- dashboardPage(
   dashboardHeader(title = "Calculators"),
   dashboardSidebar(sidebarMenu(id = "tabs",
                                menuItem("PCR",tabName = "pcr_calc",icon = icon("th")),
-                               menuItem("Hemocytometer",tabName = "hemocytometry_tab",icon = icon("th"))),
+                               menuItem("Hemocytometer",tabName = "hemocytometry_tab",icon = icon("th")),
+                               menuItem("WIP",tabName = "WIP_tab",icon = icon("th"))),
     withTags({
     a(href = 'https://avh.science/shiny/',"Shiny Home")
     })),
@@ -32,7 +36,12 @@ ui <- dashboardPage(
               ),
       tabItem(tabName = "hemocytometry_tab",
               hemocytometer_UI_APP("hemocytometer", table_out_ID = "hemocytometry_quickstat_table")
-              )
+              ),
+      tabItem(tabName = "WIP_tab",
+              file_import_UI("ey",label = "Load File"),
+              tableOutput(outputId = "WIPtable"),
+              file_import_UI("primerfile",label = "Loads primer file")
+      )
     )
     
   )
@@ -54,6 +63,10 @@ server <- function(input, output) {
     qc.table()
   })
   
+  output$WIPtable <- renderTable({
+    df <- callModule(file_import_Server,"ey")
+    df()
+  })
   
    
 }

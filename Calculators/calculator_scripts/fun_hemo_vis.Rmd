@@ -1,0 +1,52 @@
+---
+title: "Untitled"
+author: "avh"
+date: "September 9, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+```{r}
+
+total_cell_count = 200
+counted_large_sq = 4
+available_large_sq = 9
+surface_area_hemo_x = 3
+surface_area_hemo_y = 3
+
+df %>%
+  filter(Cell_X < 1 & Cell_Y < 1)
+  
+
+total_hemo_cells <- (total_cell_count / counted_large_sq)*available_large_sq
+
+df <- data.frame(Cell_X = runif(total_hemo_cells,0,3),
+                 Cell_Y = runif(total_hemo_cells,0,3))
+
+df
+
+x_y = c(0,1,2,3)
+                        
+x_y_minor = c(0.25,0.5,0.75,1.25,1.5,1.75,2.25,2.5,2.75)
+
+
+plot.hem <- ggplot(df,aes(x = Cell_X,y = Cell_Y))
+
+plot.hem +
+  geom_point()+
+  scale_x_continuous(expand = c(0,0))+
+  scale_y_continuous(expand = c(0,0))+
+  geom_hline(yintercept = x_y,size = 1)+
+  geom_vline(xintercept = x_y,size = 1)+
+  geom_hline(yintercept = x_y_minor,alpha = 0.4)+
+  geom_vline(xintercept = x_y_minor,alpha = 0.4)+
+  theme(aspect.ratio = 1)
+
+
+```
+
